@@ -126,9 +126,14 @@ class TeXParser {
 			return false;
 		}
 		
-		this.buffer += '<span class="tex-maths">';
+		this.mathDisplayMode = this.accept("$");
+		
+		this.buffer += '<span class="tex-maths' + (this.mathDisplayMode ? ' tex-maths-display' : 'tex-maths-inline') + '">';
 		while (this.reader.hasNext()) {
 			if (this.accept("$")) {
+				if (this.mathDisplayMode && !this.accept("$")) {
+					throw new TeXSyntaxError("Expecting $$, got $");
+				}
 				this.buffer += '</span>';
 				return true;
 			} else {
@@ -209,6 +214,8 @@ class TeXParser {
 		
 		if (macro === "uDelta") {
 			this.buffer += 'Δ';
+		} else if (macro === "approx") {
+			this.buffer += '≈';
 		} else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 			this.buffer += new TeXParser(new StringReader("$" + args[0] + "$")).parseTeX(); // TODO: Make this less dodgy.
