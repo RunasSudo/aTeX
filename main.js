@@ -52,18 +52,20 @@ class TeXSyntaxError extends Error {
 }
 
 class TeXParser {
-	constructor(reader) {
+	constructor(reader, options) {
 		this.reader = reader;
+		
+		this.options = {};
+		this.options.mathsOnly = (options.mathsOnly !== undefined ? options.mathsOnly : false); // Treat as TeX only in maths mode
 	}
 	
 	parseTeX() {
 		let buffer = "";
 		try {
 			while (this.reader.hasNext()) {
-				let out = "";
-				if ((out = this.parseMacro())
-				 || (out = this.parseText())
-				) {
+				let out;
+				if (out = this.parseToplevelSymbol())
+				{
 					buffer += out;
 				} else {
 					throw new TeXSyntaxError("Unknown symbol " + this.reader.peek());
@@ -75,6 +77,16 @@ class TeXParser {
 			console.log(ex.stack);
 		}
 		return buffer;
+	}
+	
+	parseToplevelSymbol() {
+		let out;
+		if (this.options.mathsOnly) {
+			out = (this.parseMaths() || this.parseAnything());
+		} else {
+			out = (this.parseMacro() || this.parseText());
+		}
+		return out;
 	}
 	
 	escapeRegex(regex) {
@@ -108,6 +120,13 @@ class TeXParser {
 		return buffer;
 	}
 	
+	parseAnything() {
+		let out;
+		if ((out = this.accept(/[^\$]/))) {
+			return out;
+		}
+	}
+	
 	parseText() {
 		let out;
 		if ((out = this.accept(/[^#\$%\^&_\{\}~\\]/))) {
@@ -116,7 +135,7 @@ class TeXParser {
 	}
 	
 	parseGroup() {
-		let group = "";
+		let buffer = "";
 		if (!this.accept("{")) {
 			throw new TeXSyntaxError("Expecting {, got " + this.reader.peek());
 		}
@@ -124,30 +143,58 @@ class TeXParser {
 		// Go through characters, find nested groups and exit on un-nested }
 		while (this.reader.hasNext()) {
 			if (this.reader.peek() === "{") {
-				group += "{" + this.parseGroup() + "}";
+				buffer += "{" + this.parseGroup() + "}";
 			} else if (this.reader.peek() === "}") {
 				this.accept("}");
-				return group;
+				return buffer;
 			} else {
-				group += this.reader.next();
+				buffer += this.reader.next();
 			}
 		}
 		
 		throw new TeXSyntaxError("Expecting }, got EOF");
 	}
 	
-	parseMacro() {
-		if (this.accept("\\")) {
-			let macro = this.readString(/[a-zA-Z]/);
-			let starred = this.accept("*");
-			let args = [];
-			while (this.reader.peek() === "{") {
-				args.push(this.parseGroup());
-			}
-			return "MACRO " + macro + "," + args; //TODO
+	parseMaths() {
+		let buffer = "";
+		if (!this.accept("$")) {
+			return false;
 		}
-		return false;
+		
+		while (this.reader.hasNext()) {
+			if (this.accept("$")) {
+				return buffer;
+			} else {
+				// Do mathemagics
+				let out;
+				if (out = this.accept(/[0-9 +×÷=]/)) {
+					buffer += out;
+				} else if (out = this.accept("-")) {
+					buffer += '&minus;';
+				} else if (out = this.parseMacro()) {
+					buffer += out;
+				} else if (this.reader.peek().match(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/)) {
+					buffer += '<span class="tex-variable">' + this.readString(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/) + '</span>';
+				} else {
+					throw new TeXSyntaxError("Unknown symbol " + this.reader.peek());
+				}
+			}
+		}
+		
+		throw new TeXSyntaxError("Expecting $, got EOF");
+	}
+	
+	parseMacro() {
+		if (!this.accept("\\")) {
+			return false;
+		}
+		
+		let macro = this.readString(/[a-zA-Z]/);
+		let starred = this.accept("*");
+		let args = [];
+		while (this.reader.peek() === "{") {
+			args.push(this.parseGroup());
+		}
+		return "MACRO " + macro + "," + args; //TODO
 	}
 }
-
-new TeXParser(new StringReader("Hello World!")).parseTeX();

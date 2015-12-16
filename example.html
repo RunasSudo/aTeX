@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>aTeX example</title>
+		
+		<style type="text/css">
+			.tex-error {
+				font-weight: bold;
+				color: red;
+			}
+			.tex-variable {
+				font-style: italic;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="atex">Hello World! $a + a = 2a$</div>
+		
+		<script type="application/javascript" src="main.es5.js"></script>
+		<script type="application/javascript">
+			var elem = document.getElementById("atex");
+			var parser = new TeXParser(new StringReader(elem.innerHTML), {
+				mathsOnly: true
+			});
+			elem.innerHTML = parser.parseTeX();
+		</script>
+	</body>
+</html>
