@@ -56,57 +56,43 @@ class TeXParser {
 		this.reader = reader;
 		
 		this.options = {};
-		this.options.mathsOnly = (options.mathsOnly !== undefined ? options.mathsOnly : false); // Treat as TeX only in maths mode
 	}
 	
 	parseTeX() {
-		let buffer = "";
+		this.buffer = "";
 		try {
 			while (this.reader.hasNext()) {
-				let out;
-				if (out = this.parseToplevelSymbol())
+				if (this.parseDollarSign() || this.parseText())
 				{
-					buffer += out;
 				} else {
-					throw new TeXSyntaxError("Unknown symbol " + this.reader.peek());
+					throw new TeXSyntaxError("Unexpected " + this.reader.peek());
 				}
 			}
 		} catch (ex) {
-			buffer += '<span class="tex-error">' + ex.name + ': ' + ex.message + ' near ' + this.reader.getPos() + '</span>';
+			this.buffer += '<span class="tex-error">' + ex.name + ': ' + ex.message + ' near ' + this.reader.getPos() + '</span>';
 			console.log(ex.name + ": " + ex.message);
 			console.log(ex.stack);
 		}
-		return buffer;
+		return this.buffer;
 	}
 	
-	parseToplevelSymbol() {
-		let out;
-		if (this.options.mathsOnly) {
-			out = (this.parseMaths() || this.parseAnything());
-		} else {
-			out = (this.parseMacro() || this.parseText());
-		}
-		return out;
-	}
-	
-	escapeRegex(regex) {
-		if (typeof(regex) === "string") {
-			return RegExp(regex.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"));
-		} else {
-			return regex;
-		}
-	}
-	
+	// Swallow and return next character if matches regex, otherwise return false.
 	accept(regex, strict = false) {
-		if (this.reader.peek().match(this.escapeRegex(regex))) {
-			return this.reader.next();
-		} else {
-			if (strict) {
-				throw new TeXSyntaxError("Expecting " + regex + ", got " + this.reader.peek());
+		if (typeof(regex) === "string") {
+			if (this.reader.peek() === regex) {
+				return this.reader.next();
 			}
+		} else if (this.reader.peek().match(regex)) {
+			return this.reader.next();
 		}
+		
+		if (strict) {
+			throw new TeXSyntaxError("Expecting " + regex + ", got " + this.reader.peek());
+		}
+		return false;
 	}
 	
+	// Read a string of characters, each of which matches a regex.
 	readString(regex) {
 		let buffer = "";
 		if (!this.reader.peek().match(regex)) {
@@ -120,20 +106,53 @@ class TeXParser {
 		return buffer;
 	}
 	
-	parseAnything() {
-		let out;
-		if ((out = this.accept(/[^\$]/))) {
-			return out;
-		}
-	}
-	
+	// Accept any character that does not enter maths mode.
 	parseText() {
 		let out;
-		if ((out = this.accept(/[^#\$%\^&_\{\}~\\]/))) {
-			return out;
+		if (out = this.accept(/[^\$]/)) {
+			this.buffer += out;
+			return true;
 		}
+		return false;
 	}
 	
+	// Handle entry into maths mode.
+	parseDollarSign() {
+		if (!this.accept("$")) {
+			return false;
+		}
+		
+		this.buffer += '<span class="tex-maths">';
+		while (this.reader.hasNext()) {
+			if (this.accept("$")) {
+				this.buffer += '</span>';
+				return true;
+			} else {
+				// Do mathemagics
+				this.parseMaths();
+			}
+		}
+		
+		throw new TeXSyntaxError("Expecting $, got EOF");
+	}
+	
+	// Parse content in maths mode.
+	parseMaths() {
+		let out;
+		if (out = this.accept(/[0-9 +×÷=><≥≤]/)) {
+			this.buffer += out;
+		} else if (this.accept("-")) {
+			this.buffer += '−';
+		} else if (this.parseMacro()) {
+		} else if (this.reader.peek().match(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/)) {
+			this.buffer += '<span class="tex-variable">' + this.readString(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/) + '</span>';
+		} else {
+			throw new TeXSyntaxError("Unexpected " + this.reader.peek());
+		}
+		return true;
+	}
+	
+	// Return the (mostly) unparsed content in the following group.
 	parseGroup() {
 		let buffer = "";
 		if (!this.accept("{")) {
@@ -155,35 +174,6 @@ class TeXParser {
 		throw new TeXSyntaxError("Expecting }, got EOF");
 	}
 	
-	parseMaths() {
-		let buffer = "";
-		if (!this.accept("$")) {
-			return false;
-		}
-		
-		while (this.reader.hasNext()) {
-			if (this.accept("$")) {
-				return buffer;
-			} else {
-				// Do mathemagics
-				let out;
-				if (out = this.accept(/[0-9 +×÷=]/)) {
-					buffer += out;
-				} else if (out = this.accept("-")) {
-					buffer += '&minus;';
-				} else if (out = this.parseMacro()) {
-					buffer += out;
-				} else if (this.reader.peek().match(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/)) {
-					buffer += '<span class="tex-variable">' + this.readString(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/) + '</span>';
-				} else {
-					throw new TeXSyntaxError("Unknown symbol " + this.reader.peek());
-				}
-			}
-		}
-		
-		throw new TeXSyntaxError("Expecting $, got EOF");
-	}
-	
 	parseMacro() {
 		if (!this.accept("\\")) {
 			return false;
@@ -195,6 +185,14 @@ class TeXParser {
 		while (this.reader.peek() === "{") {
 			args.push(this.parseGroup());
 		}
-		return "MACRO " + macro + "," + args; //TODO
+		
+		if (macro === "uDelta") {
+			this.buffer += "Δ";
+		} else {
+			throw new TeXSyntaxError("Unknown macro " + macro);
+		}
+		
+		this.accept(" ");
+		return true;
 	}
 }

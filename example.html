@@ -5,6 +5,11 @@
 		<title>aTeX example</title>
 		
 		<style type="text/css">
+			body {
+				font-family: "TeX Gyre Pagella", serif;
+				font-size: 18pt;
+			}
+			
 			.tex-error {
 				font-weight: bold;
 				color: red;
@@ -15,14 +20,12 @@
 		</style>
 	</head>
 	<body>
-		<div id="atex">Hello World! $a + a = 2a$</div>
+		<div id="atex">Hello World! $a + 2a - \uDelta b = 3a - \uDelta b$</div>
 		
 		<script type="application/javascript" src="main.es5.js"></script>
 		<script type="application/javascript">
 			var elem = document.getElementById("atex");
-			var parser = new TeXParser(new StringReader(elem.innerHTML), {
-				mathsOnly: true
-			});
+			var parser = new TeXParser(new StringReader(elem.innerHTML));
 			elem.innerHTML = parser.parseTeX();
 		</script>
 	</body>
