@@ -51,15 +51,19 @@ class TeXSyntaxError extends Error {
 	}
 }
 
+let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞";
+let MATH_ACTIVES = "\\^_";
+let MATH_VARIABLES = "^#\\$%&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
+
 class TeXParser {
 	constructor(reader, options) {
 		this.reader = reader;
+		this.buffer = "";
 		
 		this.options = {};
 	}
 	
 	parseTeX() {
-		this.buffer = "";
 		try {
 			while (this.reader.hasNext()) {
 				if (this.parseDollarSign() || this.parseText())
@@ -138,21 +142,35 @@ class TeXParser {
 	
 	// Parse content in maths mode.
 	parseMaths() {
-		let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞";
-		let MATH_VARIABLES = "^#\\$%\\^&_\\{\\}~\\\\" + MATH_UPRIGHTS; // ^#\$\^&_\{\}~\\
-		
 		let out;
 		if (out = this.accept(RegExp("[" + MATH_UPRIGHTS + "]"))) {
 			this.buffer += out;
 		} else if (this.accept("-")) {
 			this.buffer += '−';
+		} else if (this.accept("_")) {
+			this.buffer += '<sub>';
+			this.parseMaths(); // Read a single character or the next group/macro/etc.
+			this.buffer += '</sub>';
+		} else if (this.accept("^")) {
+			this.buffer += '<sup>';
+			this.parseMaths();
+			this.buffer += '</sup>';
+		} else if (this.reader.peek() === "{") {
+			this.buffer += new TeXParser(new StringReader("$" + this.parseGroup() + "$")).parseTeX();
 		} else if (this.parseMacro()) {
-		} else if (this.reader.peek().match(RegExp("[" + MATH_VARIABLES + "]"))) {
-			this.buffer += '<span class="tex-variable">' + this.readString(RegExp("[" + MATH_VARIABLES + "]")) + '</span>';
+		} else if (out = this.parseVariable()) {
+			this.buffer += '<i class="tex-variable">' + out + '</i>';
 		} else {
 			throw new TeXSyntaxError("Unexpected " + this.reader.peek());
 		}
 		return true;
+	}
+	
+	parseVariable() {
+		if (!this.reader.peek().match(RegExp("[" + MATH_VARIABLES + "]"))) {
+			return false;
+		}
+		return this.readString(RegExp("[" + MATH_VARIABLES + "]"));
 	}
 	
 	// Return the (mostly) unparsed content in the following group.
@@ -193,7 +211,7 @@ class TeXParser {
 			this.buffer += 'Δ';
 		} else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
-			this.buffer += new TeXParser(new StringReader("$" + args[0] + "$")).parseTeX();
+			this.buffer += new TeXParser(new StringReader("$" + args[0] + "$")).parseTeX(); // TODO: Make this less dodgy.
 			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
 			this.buffer += new TeXParser(new StringReader("$" + args[1] + "$")).parseTeX();
 			this.buffer += '</div></div>';

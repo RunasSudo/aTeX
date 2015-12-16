@@ -23,6 +23,9 @@
 .tex-variable {
 	font-style: italic;
 }
+.tex-maths sub, .tex-maths sup {
+	font-size: 0.7em;
+}
 
 .tex-frac {
 	display: inline-block;
