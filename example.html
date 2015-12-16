@@ -17,10 +17,31 @@
 			.tex-variable {
 				font-style: italic;
 			}
+			
+			.tex-frac {
+				display: inline-block;
+				height: 2em;
+				font-size: 0.8em;
+			}
+			.tex-frac > div {
+				position: relative;
+				height: 0;
+				text-align: center;
+			}
+			.tex-frac > div.tex-frac-num {
+				top: -0.5em;
+			}
+			.tex-frac > div.tex-frac-bar {
+				top: 0.9em;
+				border-bottom: 1px solid black;
+			}
+			.tex-frac > div.tex-frac-den {
+				top: 0.7em;
+			}
 		</style>
 	</head>
 	<body>
-		<div id="atex">Hello World! $a + 2a - \uDelta b = 3a - \uDelta b$</div>
+		<div id="atex">Hello World! $\frac{1}{a} × 2a - \uDelta b = 2 - \uDelta b$</div>
 		
 		<script type="application/javascript" src="main.es5.js"></script>
 		<script type="application/javascript">

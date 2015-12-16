@@ -138,14 +138,17 @@ class TeXParser {
 	
 	// Parse content in maths mode.
 	parseMaths() {
+		let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞";
+		let MATH_VARIABLES = "^#\\$%\\^&_\\{\\}~\\\\" + MATH_UPRIGHTS; // ^#\$\^&_\{\}~\\
+		
 		let out;
-		if (out = this.accept(/[0-9 +×÷=><≥≤]/)) {
+		if (out = this.accept(RegExp("[" + MATH_UPRIGHTS + "]"))) {
 			this.buffer += out;
 		} else if (this.accept("-")) {
 			this.buffer += '−';
 		} else if (this.parseMacro()) {
-		} else if (this.reader.peek().match(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/)) {
-			this.buffer += '<span class="tex-variable">' + this.readString(/[^#\$%\^&_\{\}~\\0-9 +×÷=]/) + '</span>';
+		} else if (this.reader.peek().match(RegExp("[" + MATH_VARIABLES + "]"))) {
+			this.buffer += '<span class="tex-variable">' + this.readString(RegExp("[" + MATH_VARIABLES + "]")) + '</span>';
 		} else {
 			throw new TeXSyntaxError("Unexpected " + this.reader.peek());
 		}
@@ -187,12 +190,23 @@ class TeXParser {
 		}
 		
 		if (macro === "uDelta") {
-			this.buffer += "Δ";
+			this.buffer += 'Δ';
+		} else if (macro === "frac") {
+			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
+			this.buffer += new TeXParser(new StringReader("$" + args[0] + "$")).parseTeX();
+			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
+			this.buffer += new TeXParser(new StringReader("$" + args[1] + "$")).parseTeX();
+			this.buffer += '</div></div>';
+		} else if (macro === "text") {
+			this.buffer += new TeXParser(new StringReader(args[0])).parseTeX();
 		} else {
 			throw new TeXSyntaxError("Unknown macro " + macro);
 		}
 		
-		this.accept(" ");
+		if (args.length == 0) {
+			this.accept(" ");
+		}
+		
 		return true;
 	}
 }
