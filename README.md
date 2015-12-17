@@ -14,3 +14,6 @@ Currently, no LaTeX (aside from `\$`) is parsed unless in mathematics mode (`$ .
 Only a limited subset of mathematics macros is supported. See the implementation of *parseMacro* in *main.js* for more information. It is recommended that symbols are input as Unicode characters rather than as macros (à la *unicode-math*).
 
 Spaces are *preserved* in mathematics mode (unlike in LaTeX). Operators do not automatically insert the required spacing (with the exception of macros such as `\times` and `\approx`).
+
+## Warning
+aTeX does not check the input or output data for HTML code. This could introduce an XSS vulnerability into your application. Be careful!
