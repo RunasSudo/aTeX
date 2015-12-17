@@ -51,9 +51,9 @@ class TeXSyntaxError extends Error {
 	}
 }
 
-let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞";
+let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞%\(\)\?";
 let MATH_ACTIVES = "\\^_";
-let MATH_VARIABLES = "^#\\$%&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
+let MATH_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
 
 class TeXParser {
 	constructor(reader, options) {
@@ -66,7 +66,7 @@ class TeXParser {
 	parseTeX() {
 		try {
 			while (this.reader.hasNext()) {
-				if (this.parseDollarSign() || this.parseText())
+				if (this.parseDollarSign() || this.parseTextMacro() || this.parseText())
 				{
 				} else {
 					throw new TeXSyntaxError("Unexpected " + this.reader.peek());
@@ -113,11 +113,22 @@ class TeXParser {
 	// Accept any character that does not enter maths mode.
 	parseText() {
 		let out;
-		if (out = this.accept(/[^\$]/)) {
+		if (out = this.accept(/[^\$\\]/)) {
 			this.buffer += out;
 			return true;
 		}
 		return false;
+	}
+	
+	parseTextMacro() {
+		if (!this.accept("\\")) {
+			return false;
+		}
+		if (this.accept("$")) {
+			this.buffer += "$";
+		} else {
+			this.buffer += "\\";
+		}
 	}
 	
 	// Handle entry into maths mode.
@@ -215,7 +226,11 @@ class TeXParser {
 		if (macro === "uDelta") {
 			this.buffer += 'Δ';
 		} else if (macro === "approx") {
-			this.buffer += '≈';
+			this.buffer += '≈ ';
+		} else if (macro === "times") {
+			this.buffer += '× ';
+		} else if (macro === "sin" || macro === "cos" || macro === "tan") {
+			this.buffer += macro + ' ';
 		} else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 			this.buffer += new TeXParser(new StringReader("$" + args[0] + "$")).parseTeX(); // TODO: Make this less dodgy.
@@ -224,6 +239,10 @@ class TeXParser {
 			this.buffer += '</div></div>';
 		} else if (macro === "text") {
 			this.buffer += new TeXParser(new StringReader(args[0])).parseTeX();
+		} else if (macro === "mathcal") {
+			if (args[0] === "E") {
+				this.buffer += 'ℰ';
+			}
 		} else {
 			throw new TeXSyntaxError("Unknown macro " + macro);
 		}
