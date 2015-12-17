@@ -1,6 +1,8 @@
 # aTeX
 Lightweight TeX-style mathematics in JavaScript. Designed for [Anki](http://ankisrs.net/) but runs anywhere.
 
+[See it in action with a live demo](https://runassudo.github.io/aTeX/)
+
 ## Usage
 See *example.html* for example usage.
 
