@@ -56,6 +56,10 @@ let MATH_ACTIVES = "\\^_";
 let MATH_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
 
 class TeXParser {
+	static parseString(string) {
+		return new TeXParser(new StringReader(string)).parseTeX();
+	}
+	
 	constructor(reader, options) {
 		this.reader = reader;
 		this.buffer = "";
@@ -233,12 +237,12 @@ class TeXParser {
 			this.buffer += macro + ' ';
 		} else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
-			this.buffer += new TeXParser(new StringReader("$" + args[0] + "$")).parseTeX(); // TODO: Make this less dodgy.
+			this.buffer += TeXParser.parseString("$" + args[0] + "$"); // TODO: Make this less dodgy.
 			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
-			this.buffer += new TeXParser(new StringReader("$" + args[1] + "$")).parseTeX();
+			this.buffer += TeXParser.parseString("$" + args[1] + "$");
 			this.buffer += '</div></div>';
 		} else if (macro === "text") {
-			this.buffer += new TeXParser(new StringReader(args[0])).parseTeX();
+			this.buffer += TeXParser.parseString(args[0]);
 		} else if (macro === "mathcal") {
 			if (args[0] === "E") {
 				this.buffer += 'ℰ';
