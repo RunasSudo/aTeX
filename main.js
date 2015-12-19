@@ -176,21 +176,14 @@ class TeXParser {
 			this.parseMaths();
 			this.buffer += '</sup>';
 		} else if (this.reader.peek() === "{") {
-			this.buffer += new TeXParser(new StringReader("$" + this.parseGroup() + "$")).parseTeX();
+			this.buffer += TeXParser.parseString("$" + this.parseGroup() + "$");
 		} else if (this.parseMacro()) {
-		} else if (out = this.parseVariable()) {
+		} else if (out = this.accept(RegExp("[" + MATH_VARIABLES + "]"))) {
 			this.buffer += '<i class="tex-variable">' + out + '</i>';
 		} else {
 			throw new TeXSyntaxError("Unexpected " + this.reader.peek());
 		}
 		return true;
-	}
-	
-	parseVariable() {
-		if (!this.reader.peek().match(RegExp("[" + MATH_VARIABLES + "]"))) {
-			return false;
-		}
-		return this.readString(RegExp("[" + MATH_VARIABLES + "]"));
 	}
 	
 	// Return the (mostly) unparsed content in the following group.
