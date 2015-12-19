@@ -236,6 +236,10 @@ class TeXParser {
 			this.buffer += '</div></div>';
 		} else if (macro === "text") {
 			this.buffer += TeXParser.parseString(args[0]);
+		} else if (macro === "overline") {
+			this.buffer += '<span class="tex-overline">';
+			this.buffer += TeXParser.parseString("$" + args[0] + "$");
+			this.buffer += '</span>';
 		} else if (macro === "mathcal") {
 			if (args[0] === "E") {
 				this.buffer += 'ℰ';
