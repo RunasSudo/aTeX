@@ -51,13 +51,18 @@ class TeXSyntaxError extends Error {
 	}
 }
 
+// why u no class variables, JS?
 let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞%\(\)\?";
 let MATH_ACTIVES = "\\^_";
 let MATH_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
 
 class TeXParser {
-	static parseString(string) {
-		return new TeXParser(new StringReader(string)).parseTeX();
+	static parseString(string, isMaths = false) {
+		if (isMaths) {
+			return new TeXParser(new StringReader(string)).parseMaths();
+		} else {
+			return new TeXParser(new StringReader(string)).parseTeX();
+		}
 	}
 	
 	constructor(reader, options) {
@@ -75,6 +80,20 @@ class TeXParser {
 				} else {
 					throw new TeXSyntaxError("Unexpected " + this.reader.peek());
 				}
+			}
+		} catch (ex) {
+			this.buffer += '<span class="tex-error">' + ex.name + ': ' + ex.message + ' near ' + this.reader.getPos() + '</span>';
+			console.log(ex.name + ": " + ex.message);
+			console.log(ex.stack);
+		}
+		return this.buffer;
+	}
+	
+	// Like parseTeX, but begin in maths mode.
+	parseMaths() {
+		try {
+			while (this.reader.hasNext()) {
+				this.parseMathsSymbol();
 			}
 		} catch (ex) {
 			this.buffer += '<span class="tex-error">' + ex.name + ': ' + ex.message + ' near ' + this.reader.getPos() + '</span>';
@@ -153,15 +172,15 @@ class TeXParser {
 				return true;
 			} else {
 				// Do mathemagics
-				this.parseMaths();
+				this.parseMathsSymbol();
 			}
 		}
 		
 		throw new TeXSyntaxError("Expecting $, got EOF");
 	}
 	
-	// Parse content in maths mode.
-	parseMaths() {
+	// Parse a "single" maths symbol.
+	parseMathsSymbol() {
 		let out;
 		if (out = this.accept(RegExp("[" + MATH_UPRIGHTS + "]"))) {
 			this.buffer += out;
@@ -169,14 +188,14 @@ class TeXParser {
 			this.buffer += '−';
 		} else if (this.accept("_")) {
 			this.buffer += '<sub>';
-			this.parseMaths(); // Read a single character or the next group/macro/etc.
+			this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
 			this.buffer += '</sub>';
 		} else if (this.accept("^")) {
 			this.buffer += '<sup>';
-			this.parseMaths();
+			this.parseMathsSymbol();
 			this.buffer += '</sup>';
 		} else if (this.reader.peek() === "{") {
-			this.buffer += TeXParser.parseString("$" + this.parseGroup() + "$");
+			this.buffer += TeXParser.parseString(this.parseGroup(), true);
 		} else if (this.parseMacro()) {
 		} else if (out = this.accept(RegExp("[" + MATH_VARIABLES + "]"))) {
 			this.buffer += '<i class="tex-variable">' + out + '</i>';
@@ -230,15 +249,15 @@ class TeXParser {
 			this.buffer += macro + ' ';
 		} else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
-			this.buffer += TeXParser.parseString("$" + args[0] + "$"); // TODO: Make this less dodgy.
+			this.buffer += TeXParser.parseString(args[0], true);
 			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
-			this.buffer += TeXParser.parseString("$" + args[1] + "$");
+			this.buffer += TeXParser.parseString(args[1], true);
 			this.buffer += '</div></div>';
 		} else if (macro === "text") {
 			this.buffer += TeXParser.parseString(args[0]);
 		} else if (macro === "overline") {
 			this.buffer += '<span class="tex-overline">';
-			this.buffer += TeXParser.parseString("$" + args[0] + "$");
+			this.buffer += TeXParser.parseString(args[0], true);
 			this.buffer += '</span>';
 		} else if (macro === "mathcal") {
 			if (args[0] === "E") {
