@@ -68,3 +68,18 @@
 	top: 0.2em; /* lower overline */
 	border-bottom: 1px solid;
 }
+
+.tex-align {
+	display: table;
+	margin: 0 auto;
+}
+.tex-align > div {
+	display: table-row;
+}
+.tex-align > div > div.tex-align-lhs {
+	display: table-cell;
+	text-align: right;
+}.tex-align > div > div.tex-align-rhs {
+	display: table-cell;
+	text-align: left;
+}

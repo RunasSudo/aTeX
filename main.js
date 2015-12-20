@@ -310,4 +310,85 @@ class TeXParser {
 		
 		return true;
 	}
+	
+	// Return the (mostly) unparsed content in the following environment.
+	readEnvironment(name) {
+		let buffer = "";
+		
+		// Go through characters, find nested environments and exit on un-nested \end{name}
+		while (this.reader.hasNext()) {
+			if (this.accept("\\")) {
+				if (this.reader.peek().match(/[a-zA-Z]/)) {
+					let [macro, starred, args] = this.readMacro();
+					
+					if (macro === "begin") {
+						buffer += "\\begin{";
+						buffer += args[0];
+						buffer += "}";
+						buffer += this.readEnvironment(args[0]);
+						buffer += "\\end{" + args[0] + "}";
+					} else if (macro === "end") {
+						if (args[0] !== name) {
+							throw new TeXSyntaxError("Expecting \\end{" + name + "}, got \\end{" + args[0] + "}");
+						}
+						return buffer;
+					} else {
+						//unreadMacro?
+						buffer += "\\" + macro + (starred ? "*" : "");
+						for (let arg of args) {
+							buffer += "{" + arg + "}";
+						}
+					}
+				} else {
+					buffer += "\\";
+				}
+			} else {
+				buffer += this.reader.next();
+			}
+		}
+		
+		throw new TeXSyntaxError("Expecting \\end{" + name + "}, got EOF");
+	}
+	
+	parseEnvironment(name) {
+		if (name === "align") {
+			let reader = new StringReader(this.readEnvironment(name));
+			let parser = new TeXParser(reader); // Oh boy...
+			parser.mathsDisplayMode = true;
+			
+			this.buffer += '<div class="tex-align">';
+			this.buffer += '<div><div class="tex-align-lhs">'; // row, col
+			
+			// Slightly modified parseMaths()
+			while (reader.hasNext()) {
+				parser.buffer = ""; // We add the parser's buffer to ours after every symbol, so reset here
+				
+				if (parser.accept("&")) {
+					this.buffer += '</div>&nbsp;<div class="tex-align-rhs">'; // TODO: Better way of handling spaces
+				} else if (parser.accept("\\")) {
+					if (reader.peek().match(/[a-zA-Z]/)) {
+						// A macro
+						let [macro, starred, args] = parser.readMacro();
+						parser.handleMacro(macro, starred, args);
+						this.buffer += parser.buffer;
+					} else if (parser.accept("\\")) {
+						// A newline
+						this.buffer += '</div></div>'; // row, col
+						this.buffer += '<div><div class="tex-align-lhs">';
+					} else {
+						throw new TeXSyntaxError("Unexpected " + reader.next());
+					}
+				} else {
+					parser.parseMathsSymbol();
+					this.buffer += parser.buffer;
+				}
+			}
+			
+			this.buffer += '</div></div>' // row, col
+		}
+		
+		else {
+			throw new TeXSyntaxError("Unknown environment " + name);
+		}
+	}
 }
