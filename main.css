@@ -57,5 +57,14 @@
 }
 
 .tex-overline {
-	border-top: 1px solid;
+	position: relative;
+}
+.tex-overline::after {
+	content: "";
+	position: absolute;
+	width: 100%;
+	height: 0;
+	left: 0;
+	top: 0.2em; /* lower overline */
+	border-bottom: 1px solid;
 }
