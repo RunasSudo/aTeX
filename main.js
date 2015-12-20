@@ -52,11 +52,11 @@ class TeXSyntaxError extends Error {
 }
 
 // why u no class variables, JS?
-let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞%\(\)\?";
-let MATH_ACTIVES = "\\^_'";
-let MATH_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
+let MATHS_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞%\(\)\?";
+let MATHS_ACTIVES = "\\^_'";
+let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_ACTIVES;
 
-let MATH_MACROS = {
+let MATHS_MACROS = {
 	approx: '≈ ',
 	cos: 'cos ',
 	propto: '∝ ',
@@ -170,12 +170,12 @@ class TeXParser {
 			return false;
 		}
 		
-		this.mathDisplayMode = this.accept("$");
+		this.mathsDisplayMode = this.accept("$");
 		
-		this.buffer += '<span class="tex-maths' + (this.mathDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
+		this.buffer += '<span class="tex-maths' + (this.mathsDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
 		while (this.reader.hasNext()) {
 			if (this.accept("$")) {
-				if (this.mathDisplayMode && !this.accept("$")) {
+				if (this.mathsDisplayMode && !this.accept("$")) {
 					throw new TeXSyntaxError("Expecting $$, got $");
 				}
 				this.buffer += '</span>';
@@ -192,7 +192,7 @@ class TeXParser {
 	// Parse a "single" maths symbol.
 	parseMathsSymbol() {
 		let out;
-		if (out = this.accept(RegExp("[" + MATH_UPRIGHTS + "]"))) {
+		if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
 			this.buffer += out;
 		} else if (this.accept("-")) {
 			this.buffer += '−';
@@ -207,9 +207,9 @@ class TeXParser {
 		} else if (this.accept("'")) {
 			this.buffer += '′';
 		} else if (this.reader.peek() === "{") {
-			this.buffer += TeXParser.parseString(this.parseGroup(), true);
+			this.buffer += TeXParser.parseString(this.readGroup(), true);
 		} else if (this.parseMacro()) {
-		} else if (out = this.accept(RegExp("[" + MATH_VARIABLES + "]"))) {
+		} else if (out = this.accept(RegExp("[" + MATHS_VARIABLES + "]"))) {
 			this.buffer += '<i class="tex-variable">' + out + '</i>';
 		} else {
 			throw new TeXSyntaxError("Unexpected " + this.reader.peek());
@@ -218,7 +218,7 @@ class TeXParser {
 	}
 	
 	// Return the (mostly) unparsed content in the following group.
-	parseGroup() {
+	readGroup() {
 		let buffer = "";
 		if (!this.accept("{")) {
 			throw new TeXSyntaxError("Expecting {, got " + this.reader.peek());
@@ -227,7 +227,9 @@ class TeXParser {
 		// Go through characters, find nested groups and exit on un-nested }
 		while (this.reader.hasNext()) {
 			if (this.reader.peek() === "{") {
-				buffer += "{" + this.parseGroup() + "}";
+				buffer += "{";
+				buffer += this.readGroup();
+				buffer += "}";
 			} else if (this.reader.peek() === "}") {
 				this.accept("}");
 				return buffer;
@@ -239,37 +241,66 @@ class TeXParser {
 		throw new TeXSyntaxError("Expecting }, got EOF");
 	}
 	
+	// Read macro call data, excluding initial backslash
+	readMacro() {
+		let macro = this.readString(/[a-zA-Z]/);
+		let starred = this.accept("*");
+		let args = [];
+		while (this.reader.peek() === "{") {
+			args.push(this.readGroup());
+		}
+		
+		return [macro, starred, args];
+	}
+	
 	parseMacro() {
 		if (!this.accept("\\")) {
 			return false;
 		}
 		
-		let macro = this.readString(/[a-zA-Z]/);
-		let starred = this.accept("*");
-		let args = [];
-		while (this.reader.peek() === "{") {
-			args.push(this.parseGroup());
+		let [macro, starred, args] = this.readMacro();
+		return this.handleMacro(macro, starred, args);
+	}
+	
+	handleMacro(macro, starred, args) {
+		// WARNING: The whitespace that follows is misleading!
+		if (MATHS_MACROS[macro]) {
+			this.buffer += MATHS_MACROS[macro];
 		}
 		
-		if (MATH_MACROS[macro]) {
-			this.buffer += MATH_MACROS[macro];
-		} else if (macro === "frac") {
+		else if (macro === "begin") {
+			this.parseEnvironment(args[0]);
+		}
+		
+		else if (macro === "end") {
+			throw new TeXSyntaxError("Unexpected \\end{" + args[0] + "}");
+		}
+		
+		else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 			this.buffer += TeXParser.parseString(args[0], true);
 			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
 			this.buffer += TeXParser.parseString(args[1], true);
 			this.buffer += '</div></div>';
-		} else if (macro === "text") {
+		}
+		
+		else if (macro === "text") {
 			this.buffer += TeXParser.parseString(args[0]);
-		} else if (macro === "overline") {
+		}
+		
+		else if (macro === "overline") {
 			this.buffer += '<span class="tex-overline">';
 			this.buffer += TeXParser.parseString(args[0], true);
 			this.buffer += '</span>';
-		} else if (macro === "mathcal") {
+		}
+		
+		else if (macro === "mathcal") {
 			if (args[0] === "E") {
 				this.buffer += 'ℰ';
 			}
-		} else {
+		}
+		
+		else {
 			throw new TeXSyntaxError("Unknown macro " + macro);
 		}
 		
