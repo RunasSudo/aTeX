@@ -172,7 +172,7 @@ class TeXParser {
 		
 		this.mathDisplayMode = this.accept("$");
 		
-		this.buffer += '<span class="tex-maths' + (this.mathDisplayMode ? ' tex-maths-display' : 'tex-maths-inline') + '">';
+		this.buffer += '<span class="tex-maths' + (this.mathDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
 		while (this.reader.hasNext()) {
 			if (this.accept("$")) {
 				if (this.mathDisplayMode && !this.accept("$")) {
