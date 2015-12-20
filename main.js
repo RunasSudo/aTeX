@@ -53,8 +53,18 @@ class TeXSyntaxError extends Error {
 
 // why u no class variables, JS?
 let MATH_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞%\(\)\?";
-let MATH_ACTIVES = "\\^_";
+let MATH_ACTIVES = "\\^_'";
 let MATH_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATH_UPRIGHTS + MATH_ACTIVES;
+
+let MATH_MACROS = {
+	approx: '≈ ',
+	cos: 'cos ',
+	propto: '∝ ',
+	sin: 'sin ',
+	tan: 'tan ',
+	times: '× ',
+	uDelta: 'Δ',
+};
 
 class TeXParser {
 	static parseString(string, isMaths = false) {
@@ -194,6 +204,8 @@ class TeXParser {
 			this.buffer += '<sup>';
 			this.parseMathsSymbol();
 			this.buffer += '</sup>';
+		} else if (this.accept("'")) {
+			this.buffer += '′';
 		} else if (this.reader.peek() === "{") {
 			this.buffer += TeXParser.parseString(this.parseGroup(), true);
 		} else if (this.parseMacro()) {
@@ -239,14 +251,8 @@ class TeXParser {
 			args.push(this.parseGroup());
 		}
 		
-		if (macro === "uDelta") {
-			this.buffer += 'Δ';
-		} else if (macro === "approx") {
-			this.buffer += '≈ ';
-		} else if (macro === "times") {
-			this.buffer += '× ';
-		} else if (macro === "sin" || macro === "cos" || macro === "tan") {
-			this.buffer += macro + ' ';
+		if (MATH_MACROS[macro]) {
+			this.buffer += MATH_MACROS[macro];
 		} else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 			this.buffer += TeXParser.parseString(args[0], true);
