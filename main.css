@@ -29,8 +29,36 @@
 .tex-variable {
 	font-style: italic;
 }
-.tex-maths sub, .tex-maths sup {
-	font-size: 0.7em;
+
+.tex-align {
+	display: table;
+	margin: 0 auto;
+}
+.tex-align > div {
+	display: table-row;
+}
+.tex-align > div > div.tex-align-lhs {
+	display: table-cell;
+	text-align: right;
+}.tex-align > div > div.tex-align-rhs {
+	display: table-cell;
+	text-align: left;
+}
+
+.tex-delim {
+	display: inline-block; /* some browsers don't accept transforms on inline elements */
+}
+
+.tex-overline {
+	position: relative;
+}
+.tex-overline::after {
+	content: "";
+	position: absolute;
+	width: 100%;
+	left: 0;
+	top: 0.2em; /* lower overline */
+	border-bottom: 1px solid;
 }
 
 .tex-frac {
@@ -72,29 +100,6 @@
 	border-bottom: 1px solid;
 }
 
-.tex-overline {
-	position: relative;
-}
-.tex-overline::after {
-	content: "";
-	position: absolute;
-	width: 100%;
-	left: 0;
-	top: 0.2em; /* lower overline */
-	border-bottom: 1px solid;
-}
-
-.tex-align {
-	display: table;
-	margin: 0 auto;
-}
-.tex-align > div {
-	display: table-row;
-}
-.tex-align > div > div.tex-align-lhs {
-	display: table-cell;
-	text-align: right;
-}.tex-align > div > div.tex-align-rhs {
-	display: table-cell;
-	text-align: left;
+.tex-maths sub, .tex-maths sup {
+	font-size: 0.7em;
 }

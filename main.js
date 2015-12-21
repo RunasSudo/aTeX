@@ -262,6 +262,15 @@ class TeXParser {
 		return [macro, starred, args];
 	}
 	
+	unreadMacro(macro, starred, args) {
+		let buffer = "";
+		buffer += "\\" + macro + (starred ? "*" : "");
+		for (let arg of args) {
+			buffer += "{" + arg + "}";
+		}
+		return buffer;
+	}
+	
 	parseMacro() {
 		if (!this.accept("\\")) {
 			return false;
@@ -280,7 +289,6 @@ class TeXParser {
 		else if (macro === "begin") {
 			this.parseEnvironment(args[0]);
 		}
-		
 		else if (macro === "end") {
 			throw new TeXSyntaxError("Unexpected \\end{" + args[0] + "}");
 		}
@@ -294,6 +302,19 @@ class TeXParser {
 			
 			this.buffer += TeXParser.parseString(args[1], true);
 			this.buffer += '</div></div>';
+		}
+		
+		else if (macro === "left") {
+			let [content, left, right] = this.readDelimited();
+			let contentHeight = TeXParser.estimateMathsHeight(content);
+			let transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
+			this.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
+			this.buffer += TeXParser.parseString(content, true);
+			this.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
+			// Anki's QtWebView doesn't support unprefixed CSS transforms :(
+		}
+		else if (macro === "right") {
+			throw new TeXSyntaxError("Unexpected \\right" + this.reader.next());
 		}
 		
 		else if (macro === "mathcal") {
@@ -335,6 +356,37 @@ class TeXParser {
 		return true;
 	}
 	
+	// Return the (mostly) unparsed content in the following delimited thingo, plus the delimiters.
+	readDelimited() {
+		let buffer = "";
+		let left = this.reader.next();
+		
+		// Go through characters, find nested delimited things and exit on un-nested \rightX
+		while (this.reader.hasNext()) {
+			if (this.accept("\\")) {
+				if (this.reader.peek().match(/[a-zA-Z]/)) {
+					let [macro, starred, args] = this.readMacro();
+					
+					if (macro === "left") {
+						let [content, nestedLeft, nestedRight] = this.readDelimited();
+						buffer += "\\left" + nestedLeft + content + "\\right" + nestedRight;
+					} else if (macro === "right") {
+						let right = this.reader.next();
+						return [buffer, left, right];
+					} else {
+						buffer += this.unreadMacro(macro, starred, args);
+					}
+				} else {
+					buffer += "\\";
+				}
+			} else {
+				buffer += this.reader.next();
+			}
+		}
+		
+		throw new TeXSyntaxError("Expecting \\right, got EOF");
+	}
+	
 	// Return the (mostly) unparsed content in the following environment.
 	readEnvironment(name) {
 		let buffer = "";
@@ -357,11 +409,7 @@ class TeXParser {
 						}
 						return buffer;
 					} else {
-						//unreadMacro?
-						buffer += "\\" + macro + (starred ? "*" : "");
-						for (let arg of args) {
-							buffer += "{" + arg + "}";
-						}
+						buffer += this.unreadMacro(macro, starred, args);
 					}
 				} else {
 					buffer += "\\";
