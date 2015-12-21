@@ -405,7 +405,7 @@ class TeXParser {
 				}
 			}
 			
-			this.buffer += '</div></div>' // row, col
+			this.buffer += '</div></div></div>' // row, col, tex-align
 		}
 		
 		else {
