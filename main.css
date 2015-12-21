@@ -96,7 +96,7 @@
 	position: absolute;
 	width: 100%;
 	left: 0;
-	top: 0.1em; /* reduce gap between &radix; and line */
+	top: 0.1em; /* reduce gap between &radic; and line */
 	border-bottom: 1px solid;
 }
 
