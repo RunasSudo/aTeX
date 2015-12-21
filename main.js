@@ -288,7 +288,10 @@ class TeXParser {
 		else if (macro === "frac") {
 			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 			this.buffer += TeXParser.parseString(args[0], true);
-			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
+			
+			let denHeight = TeXParser.estimateMathsHeight(args[1], this.mathsDisplayMode);
+			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
+			
 			this.buffer += TeXParser.parseString(args[1], true);
 			this.buffer += '</div></div>';
 		}
@@ -411,5 +414,36 @@ class TeXParser {
 		else {
 			throw new TeXSyntaxError("Unknown environment " + name);
 		}
+	}
+	
+	// Estimate the height of the given maths-mode code in em's
+	static estimateMathsHeight(code, mathsDisplayMode = true) {
+		let height = 0;
+		
+		let reader = new StringReader(code);
+		let parser = new TeXParser(reader);
+		parser.mathsDisplayMode = mathsDisplayMode;
+		
+		while (reader.hasNext()) {
+			// Recurse through macros
+			if (parser.accept("\\")) {
+				if (reader.peek().match(/[a-zA-Z]/)) {
+					let [macro, starred, args] = parser.readMacro();
+					
+					if (macro === "frac") {
+						height = Math.max(height, TeXParser.estimateMathsHeight(args[0]) + TeXParser.estimateMathsHeight(args[1]));
+					} else if (macro === "sqrt") {
+						height = Math.max(height, 1.3);
+					} else if (macro === "overline") {
+						height = Math.max(height, 1.2);
+					}
+				}
+			} else {
+				height = Math.max(height, 1);
+				reader.next();
+			}
+		}
+		
+		return height;
 	}
 }

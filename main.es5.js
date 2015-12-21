@@ -355,7 +355,10 @@ var TeXParser = (function () {
 			} else if (macro === "frac") {
 				this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 				this.buffer += TeXParser.parseString(args[0], true);
-				this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den">';
+
+				var denHeight = TeXParser.estimateMathsHeight(args[1], this.mathsDisplayMode);
+				this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
+
 				this.buffer += TeXParser.parseString(args[1], true);
 				this.buffer += '</div></div>';
 			} else if (macro === "mathcal") {
@@ -503,6 +506,49 @@ var TeXParser = (function () {
 			} else {
 					throw new TeXSyntaxError("Unknown environment " + name);
 				}
+		}
+
+		// Estimate the height of the given maths-mode code in em's
+
+	}], [{
+		key: "estimateMathsHeight",
+		value: function estimateMathsHeight(code) {
+			var mathsDisplayMode = arguments.length <= 1 || arguments[1] === undefined ? true : arguments[1];
+
+			var height = 0;
+
+			var reader = new StringReader(code);
+			var parser = new TeXParser(reader);
+			parser.mathsDisplayMode = mathsDisplayMode;
+
+			while (reader.hasNext()) {
+				if (parser.accept("\\")) {
+					if (reader.peek().match(/[a-zA-Z]/)) {
+						// A macro
+
+						var _parser$readMacro3 = parser.readMacro();
+
+						var _parser$readMacro4 = _slicedToArray(_parser$readMacro3, 3);
+
+						var macro = _parser$readMacro4[0];
+						var starred = _parser$readMacro4[1];
+						var args = _parser$readMacro4[2];
+
+						if (macro === "frac") {
+							height = Math.max(height, TeXParser.estimateMathsHeight(args[0]) + TeXParser.estimateMathsHeight(args[1]));
+						} else if (macro === "sqrt") {
+							height = Math.max(height, 1.3);
+						} else if (macro === "overline") {
+							height = Math.max(height, 1.2);
+						}
+					}
+				} else {
+					height = Math.max(height, 1);
+					reader.next();
+				}
+			}
+
+			return height;
 		}
 	}]);
 
