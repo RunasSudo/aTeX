@@ -52,7 +52,7 @@ class TeXSyntaxError extends Error {
 }
 
 // why u no class variables, JS?
-let MATHS_UPRIGHTS = "0-9Δ∞%\(\)\?";
+let MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
 let MATHS_BINARIES = "+×÷=><≥≤";
 let MATHS_ACTIVES = "\\^\\- _'";
 let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
@@ -293,14 +293,10 @@ class TeXParser {
 			this.buffer += '</div></div>';
 		}
 		
-		else if (macro === "text") {
-			this.buffer += TeXParser.parseString(args[0]);
-		}
-		
-		else if (macro === "sqrt") {
-			this.buffer += '<span class="tex-sqrt"><span>';
-			this.buffer += TeXParser.parseString(args[0], true);
-			this.buffer += '</span></span>';
+		else if (macro === "mathcal") {
+			if (args[0] === "E") {
+				this.buffer += 'ℰ';
+			}
 		}
 		
 		else if (macro === "overline") {
@@ -309,10 +305,20 @@ class TeXParser {
 			this.buffer += '</span>';
 		}
 		
-		else if (macro === "mathcal") {
-			if (args[0] === "E") {
-				this.buffer += 'ℰ';
-			}
+		else if (macro === "sqrt") {
+			this.buffer += '<span class="tex-sqrt"><span>';
+			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += '</span></span>';
+		}
+		
+		else if (macro === "symbf") {
+			this.buffer += '<b class="tex-symbf">';
+			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += '</b>';
+		}
+		
+		else if (macro === "text") {
+			this.buffer += TeXParser.parseString(args[0]);
 		}
 		
 		else {
