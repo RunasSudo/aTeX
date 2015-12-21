@@ -52,17 +52,18 @@ class TeXSyntaxError extends Error {
 }
 
 // why u no class variables, JS?
-let MATHS_UPRIGHTS = "0-9 +×÷=><≥≤Δ∞%\(\)\?";
-let MATHS_ACTIVES = "\\^_'";
-let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_ACTIVES;
+let MATHS_UPRIGHTS = "0-9Δ∞%\(\)\?";
+let MATHS_BINARIES = "+×÷=><≥≤";
+let MATHS_ACTIVES = "\\^\\- _'";
+let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 let MATHS_MACROS = {
-	approx: '≈ ',
+	approx: ' ≈ ',
 	cos: 'cos ',
-	propto: '∝ ',
+	propto: ' ∝ ',
 	sin: 'sin ',
 	tan: 'tan ',
-	times: '× ',
+	times: ' × ',
 	uDelta: 'Δ',
 };
 
@@ -194,8 +195,15 @@ class TeXParser {
 		let out;
 		if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
 			this.buffer += out;
+		} else if (out = this.accept(RegExp("[" + MATHS_BINARIES + "]"))) {
+			this.buffer += ' ' + out + ' ';
+		} else if (this.accept(" ")) {
 		} else if (this.accept("-")) {
-			this.buffer += '−';
+			if (this.buffer.endsWith(" ")) { // Last input was probably an operator
+				this.buffer += '−'; // Unary minus
+			} else {
+				this.buffer += ' − '; // Binary minus
+			}
 		} else if (this.accept("_")) {
 			this.buffer += '<sub>';
 			this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
