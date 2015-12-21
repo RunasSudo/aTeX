@@ -62,6 +62,7 @@ let MATHS_MACROS = {
 	cos: 'cos ',
 	propto: ' ∝ ',
 	sin: 'sin ',
+	sum: '∑',
 	tan: 'tan ',
 	times: ' × ',
 	uDelta: 'Δ',
@@ -294,6 +295,12 @@ class TeXParser {
 		
 		else if (macro === "text") {
 			this.buffer += TeXParser.parseString(args[0]);
+		}
+		
+		else if (macro === "sqrt") {
+			this.buffer += '<span class="tex-sqrt"><span>';
+			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += '</span></span>';
 		}
 		
 		else if (macro === "overline") {
