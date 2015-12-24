@@ -304,14 +304,14 @@ class TeXParser {
 		}
 		
 		else if (macro === "frac") {
-			this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
+			this.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
 			this.buffer += TeXParser.parseString(args[0], true);
 			
 			let denHeight = TeXParser.estimateMathsHeight(args[1], this.mathsDisplayMode);
-			this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
+			this.buffer += '</span><span class="tex-frac-bar"></span><span class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
 			
 			this.buffer += TeXParser.parseString(args[1], true);
-			this.buffer += '</div></div>';
+			this.buffer += '</span></span>';
 		}
 		
 		else if (macro === "left") {
@@ -446,14 +446,14 @@ class TeXParser {
 			parser.mathsDisplayMode = true;
 			
 			this.buffer += '<div class="tex-align">';
-			this.buffer += '<div><div class="tex-align-lhs">'; // row, col
+			this.buffer += '<div><span class="tex-align-lhs">'; // row, col
 			
 			// Slightly modified parseMaths()
 			while (reader.hasNext()) {
 				parser.buffer = ""; // We add the parser's buffer to ours after every symbol, so reset here
 				
 				if (parser.accept("&")) {
-					this.buffer += '</div>&nbsp;<div class="tex-align-rhs">'; // TODO: Better way of handling spaces
+					this.buffer += '</span>&nbsp;<span class="tex-align-rhs">'; // TODO: Better way of handling spaces
 				} else if (parser.accept("\\")) {
 					if (reader.peek().match(/[a-zA-Z]/)) {
 						// A macro
@@ -462,8 +462,8 @@ class TeXParser {
 						this.buffer += parser.buffer;
 					} else if (parser.accept("\\")) {
 						// A newline
-						this.buffer += '</div></div>'; // row, col
-						this.buffer += '<div><div class="tex-align-lhs">';
+						this.buffer += '</span></div>'; // col, row
+						this.buffer += '<div><span class="tex-align-lhs">';
 					} else {
 						throw new TeXSyntaxError("Unexpected " + reader.next());
 					}
@@ -473,7 +473,7 @@ class TeXParser {
 				}
 			}
 			
-			this.buffer += '</div></div></div>' // row, col, tex-align
+			this.buffer += '</span></div></div>' // col, row, tex-align
 		}
 		
 		else {

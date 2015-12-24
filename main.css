@@ -37,10 +37,10 @@
 .tex-align > div {
 	display: table-row;
 }
-.tex-align > div > div.tex-align-lhs {
+.tex-align > div > span.tex-align-lhs {
 	display: table-cell;
 	text-align: right;
-}.tex-align > div > div.tex-align-rhs {
+}.tex-align > div > span.tex-align-rhs {
 	display: table-cell;
 	text-align: left;
 }
@@ -68,25 +68,25 @@
 .tex-maths-inline .tex-frac {
 	font-size: 0.8em;
 }
-.tex-frac > div {
+.tex-frac > span {
+	display: block;
 	position: relative;
 	height: 0;
 	text-align: center;
 }
-.tex-frac > div.tex-frac-num {
+.tex-frac > span.tex-frac-num {
 	top: -0.5em;
 }
-.tex-frac > div.tex-frac-bar {
+.tex-frac > span.tex-frac-bar {
 	top: 0.9em;
 	border-bottom: 1px solid;
 }
-.tex-frac > div.tex-frac-den {
+.tex-frac > span.tex-frac-den {
 	top: 0.7em;
 }
 
 .tex-sqrt::before {
 	content: '√';
-	text-decoration: none;
 }
 .tex-sqrt > span {
 	position: relative;
