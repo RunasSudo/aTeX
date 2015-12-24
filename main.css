@@ -102,18 +102,17 @@
 
 .tex-subsup {
 	display: inline-block;
-}
-.tex-subsup sup {
+	height: 1em;
 	font-size: 0.7em;
+}
+.tex-subsup > span {
 	display: block;
 	position: relative;
-	line-height: 0;
-	top: -0.6em;
+	height: 0;
 }
-.tex-subsup sub {
-	font-size: 0.7em;
-	display: block;
-	position: relative;
-	line-height: 0;
-	top: 0.4em;
+.tex-subsup span.sup {
+	top: -0.7em;
+}
+.tex-subsup span.sub {
+	top: 0.3em;
 }

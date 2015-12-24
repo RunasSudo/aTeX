@@ -267,9 +267,9 @@ var TeXParser = (function () {
 			} else if (out = this.accept(/[_\^]/)) {
 					this.buffer += '<span class="tex-subsup">';
 					do {
-						this.buffer += out === "_" ? '<sub>' : '<sup>';
+						this.buffer += '<span class="' + (out === "_" ? 'sub' : 'sup') + '">';
 						this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
-						this.buffer += out === "_" ? '</sub>' : '</sup>';
+						this.buffer += '</span>';
 					} while (out = this.accept(/[_\^]/)); // Too much recursion. Time for loops!
 					this.buffer += '</span>';
 				} else if (this.accept("^")) {
