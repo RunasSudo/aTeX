@@ -85,7 +85,7 @@ var TeXSyntaxError = (function (_Error) {
 
 var MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
 var MATHS_BINARIES = "+×÷=><≥≤";
-var MATHS_ACTIVES = "\\^\\- _'";
+var MATHS_ACTIVES = "\\^\\- _'\\*";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS = {
@@ -264,7 +264,9 @@ var TeXParser = (function () {
 				} else {
 						this.buffer += ' − '; // Binary minus
 					}
-			} else if (out = this.accept(/[_\^]/)) {
+			} else if (this.accept("*")) {
+					this.buffer += '∗';
+				} else if (out = this.accept(/[_\^]/)) {
 					this.buffer += '<span class="tex-subsup">';
 					do {
 						this.buffer += '<span class="' + (out === "_" ? 'sub' : 'sup') + '">';
@@ -276,8 +278,6 @@ var TeXParser = (function () {
 					this.buffer += '<sup>';
 					this.parseMathsSymbol();
 					this.buffer += '</sup>';
-				} else if (this.accept("'")) {
-					this.buffer += '′';
 				} else if (this.reader.peek() === "{") {
 					this.buffer += TeXParser.parseString(this.readGroup(), true);
 				} else if (this.parseMacro()) {} else if (out = this.accept(RegExp("[" + MATHS_VARIABLES + "]"))) {

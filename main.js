@@ -54,7 +54,7 @@ class TeXSyntaxError extends Error {
 // why u no class variables, JS?
 let MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
 let MATHS_BINARIES = "+×÷=><≥≤";
-let MATHS_ACTIVES = "\\^\\- _'";
+let MATHS_ACTIVES = "\\^\\- _'\\*";
 let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 let MATHS_MACROS = {
@@ -205,6 +205,8 @@ class TeXParser {
 			} else {
 				this.buffer += ' − '; // Binary minus
 			}
+		} else if (this.accept("*")) {
+			this.buffer += '∗';
 		} else if (out = this.accept(/[_\^]/)) {
 			this.buffer += '<span class="tex-subsup">';
 			do {
@@ -217,8 +219,6 @@ class TeXParser {
 			this.buffer += '<sup>';
 			this.parseMathsSymbol();
 			this.buffer += '</sup>';
-		} else if (this.accept("'")) {
-			this.buffer += '′';
 		} else if (this.reader.peek() === "{") {
 			this.buffer += TeXParser.parseString(this.readGroup(), true);
 		} else if (this.parseMacro()) {

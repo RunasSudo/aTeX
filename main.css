@@ -26,8 +26,11 @@
 	text-align: center;
 }
 
-.tex-variable:not(.tex-maths-upright) {
+.tex-variable {
 	font-style: italic;
+}
+.tex-maths-upright > .tex-variable { /* Direct descendants only */
+	font-style: normal;
 }
 
 .tex-align {
