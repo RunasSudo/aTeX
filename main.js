@@ -317,6 +317,13 @@ class TeXParser {
 			throw new TeXSyntaxError("Unexpected \\right" + this.reader.next());
 		}
 		
+		else if (macro === "log" || macro === "ln" || macro === "lg" || macro === "lb") {
+			this.buffer += macro;
+			if (this.reader.peek() !== "_") {
+				this.buffer += ' ';
+			}
+		}
+		
 		else if (macro === "mathcal") {
 			if (args[0] === "E") {
 				this.buffer += 'ℰ';
