@@ -85,7 +85,7 @@ var TeXSyntaxError = (function (_Error) {
 
 var MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
 var MATHS_BINARIES = "+×÷=><≥≤";
-var MATHS_ACTIVES = "\\^\\- _'";
+var MATHS_ACTIVES = "\\^\\- _'\\*";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS = {
@@ -264,16 +264,20 @@ var TeXParser = (function () {
 				} else {
 						this.buffer += ' − '; // Binary minus
 					}
-			} else if (this.accept("_")) {
-					this.buffer += '<sub>';
-					this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
-					this.buffer += '</sub>';
+			} else if (this.accept("*")) {
+					this.buffer += '∗';
+				} else if (out = this.accept(/[_\^]/)) {
+					this.buffer += '<span class="tex-subsup">';
+					do {
+						this.buffer += '<span class="' + (out === "_" ? 'sub' : 'sup') + '">';
+						this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
+						this.buffer += '</span>';
+					} while (out = this.accept(/[_\^]/)); // Too much recursion. Time for loops!
+					this.buffer += '</span>';
 				} else if (this.accept("^")) {
 					this.buffer += '<sup>';
 					this.parseMathsSymbol();
 					this.buffer += '</sup>';
-				} else if (this.accept("'")) {
-					this.buffer += '′';
 				} else if (this.reader.peek() === "{") {
 					this.buffer += TeXParser.parseString(this.readGroup(), true);
 				} else if (this.parseMacro()) {} else if (out = this.accept(RegExp("[" + MATHS_VARIABLES + "]"))) {
@@ -384,15 +388,19 @@ var TeXParser = (function () {
 				this.parseEnvironment(args[0]);
 			} else if (macro === "end") {
 				throw new TeXSyntaxError("Unexpected \\end{" + args[0] + "}");
+			} else if (macro === "ce") {
+				this.buffer += '<span class="tex-maths-upright">';
+				this.buffer += TeXParser.parseString(args[0], true);
+				this.buffer += '</span>';
 			} else if (macro === "frac") {
-				this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
+				this.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
 				this.buffer += TeXParser.parseString(args[0], true);
 
 				var denHeight = TeXParser.estimateMathsHeight(args[1], this.mathsDisplayMode);
-				this.buffer += '</div><div class="tex-frac-bar"></div><div class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
+				this.buffer += '</span><span class="tex-frac-bar"></span><span class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
 
 				this.buffer += TeXParser.parseString(args[1], true);
-				this.buffer += '</div></div>';
+				this.buffer += '</span></span>';
 			} else if (macro === "left") {
 				var _readDelimited = this.readDelimited();
 
@@ -410,6 +418,11 @@ var TeXParser = (function () {
 				// Anki's QtWebView doesn't support unprefixed CSS transforms :(
 			} else if (macro === "right") {
 					throw new TeXSyntaxError("Unexpected \\right" + this.reader.next());
+				} else if (macro === "log" || macro === "ln" || macro === "lg" || macro === "lb") {
+					this.buffer += macro;
+					if (this.reader.peek() !== "_") {
+						this.buffer += ' ';
+					}
 				} else if (macro === "mathcal") {
 					if (args[0] === "E") {
 						this.buffer += 'ℰ';
@@ -538,14 +551,14 @@ var TeXParser = (function () {
 				parser.mathsDisplayMode = true;
 
 				this.buffer += '<div class="tex-align">';
-				this.buffer += '<div><div class="tex-align-lhs">'; // row, col
+				this.buffer += '<div><span class="tex-align-lhs">'; // row, col
 
 				// Slightly modified parseMaths()
 				while (reader.hasNext()) {
 					parser.buffer = ""; // We add the parser's buffer to ours after every symbol, so reset here
 
 					if (parser.accept("&")) {
-						this.buffer += '</div>&nbsp;<div class="tex-align-rhs">'; // TODO: Better way of handling spaces
+						this.buffer += '</span>&nbsp;<span class="tex-align-rhs">'; // TODO: Better way of handling spaces
 					} else if (parser.accept("\\")) {
 							if (reader.peek().match(/[a-zA-Z]/)) {
 								// A macro
@@ -562,8 +575,8 @@ var TeXParser = (function () {
 								this.buffer += parser.buffer;
 							} else if (parser.accept("\\")) {
 								// A newline
-								this.buffer += '</div></div>'; // row, col
-								this.buffer += '<div><div class="tex-align-lhs">';
+								this.buffer += '</span></div>'; // col, row
+								this.buffer += '<div><span class="tex-align-lhs">';
 							} else {
 								throw new TeXSyntaxError("Unexpected " + reader.next());
 							}
@@ -573,7 +586,7 @@ var TeXParser = (function () {
 						}
 				}
 
-				this.buffer += '</div></div></div>'; // row, col, tex-align
+				this.buffer += '</span></div></div>'; // col, row, tex-align
 			} else {
 					throw new TeXSyntaxError("Unknown environment " + name);
 				}

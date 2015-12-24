@@ -29,6 +29,9 @@
 .tex-variable {
 	font-style: italic;
 }
+.tex-maths-upright > .tex-variable { /* Direct descendants only */
+	font-style: normal;
+}
 
 .tex-align {
 	display: table;
@@ -37,10 +40,10 @@
 .tex-align > div {
 	display: table-row;
 }
-.tex-align > div > div.tex-align-lhs {
+.tex-align > div > span.tex-align-lhs {
 	display: table-cell;
 	text-align: right;
-}.tex-align > div > div.tex-align-rhs {
+}.tex-align > div > span.tex-align-rhs {
 	display: table-cell;
 	text-align: left;
 }
@@ -68,25 +71,25 @@
 .tex-maths-inline .tex-frac {
 	font-size: 0.8em;
 }
-.tex-frac > div {
+.tex-frac > span {
+	display: block;
 	position: relative;
 	height: 0;
 	text-align: center;
 }
-.tex-frac > div.tex-frac-num {
+.tex-frac > span.tex-frac-num {
 	top: -0.5em;
 }
-.tex-frac > div.tex-frac-bar {
+.tex-frac > span.tex-frac-bar {
 	top: 0.9em;
 	border-bottom: 1px solid;
 }
-.tex-frac > div.tex-frac-den {
+.tex-frac > span.tex-frac-den {
 	top: 0.7em;
 }
 
 .tex-sqrt::before {
 	content: '√';
-	text-decoration: none;
 }
 .tex-sqrt > span {
 	position: relative;
@@ -100,6 +103,19 @@
 	border-bottom: 1px solid;
 }
 
-.tex-maths sub, .tex-maths sup {
+.tex-subsup {
+	display: inline-block;
+	height: 1em;
 	font-size: 0.7em;
+}
+.tex-subsup > span {
+	display: block;
+	position: relative;
+	height: 0;
+}
+.tex-subsup span.sup {
+	top: -0.7em;
+}
+.tex-subsup span.sub {
+	top: 0.3em;
 }
