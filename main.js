@@ -205,10 +205,14 @@ class TeXParser {
 			} else {
 				this.buffer += ' − '; // Binary minus
 			}
-		} else if (this.accept("_")) {
-			this.buffer += '<sub>';
-			this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
-			this.buffer += '</sub>';
+		} else if (out = this.accept(/[_\^]/)) {
+			this.buffer += '<span class="tex-subsup">';
+			do {
+				this.buffer += (out === "_" ? '<sub>' : '<sup>');
+				this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
+				this.buffer += (out === "_" ? '</sub>' : '</sup>');
+			} while (out = this.accept(/[_\^]/)); // Too much recursion. Time for loops!
+			this.buffer += '</span>';
 		} else if (this.accept("^")) {
 			this.buffer += '<sup>';
 			this.parseMathsSymbol();
