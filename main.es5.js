@@ -388,6 +388,10 @@ var TeXParser = (function () {
 				this.parseEnvironment(args[0]);
 			} else if (macro === "end") {
 				throw new TeXSyntaxError("Unexpected \\end{" + args[0] + "}");
+			} else if (macro === "ce") {
+				this.buffer += '<span class="tex-maths-upright">';
+				this.buffer += TeXParser.parseString(args[0], true);
+				this.buffer += '</span>';
 			} else if (macro === "frac") {
 				this.buffer += '<div class="tex-frac"><div class="tex-frac-num">';
 				this.buffer += TeXParser.parseString(args[0], true);
