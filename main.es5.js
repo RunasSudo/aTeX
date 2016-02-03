@@ -1,8 +1,8 @@
 "use strict";
 
-var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })();
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
@@ -26,7 +26,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 //    You should have received a copy of the GNU Affero General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-var StringReader = (function () {
+var StringReader = function () {
 	function StringReader(string) {
 		_classCallCheck(this, StringReader);
 
@@ -63,9 +63,9 @@ var StringReader = (function () {
 	}]);
 
 	return StringReader;
-})();
+}();
 
-var TeXSyntaxError = (function (_Error) {
+var TeXSyntaxError = function (_Error) {
 	_inherits(TeXSyntaxError, _Error);
 
 	function TeXSyntaxError(message) {
@@ -79,7 +79,7 @@ var TeXSyntaxError = (function (_Error) {
 	}
 
 	return TeXSyntaxError;
-})(Error);
+}(Error);
 
 // why u no class variables, JS?
 
@@ -99,27 +99,31 @@ var MATHS_MACROS = {
 	uDelta: 'Δ'
 };
 
-var TeXParser = (function () {
+var TeXParser = function () {
 	_createClass(TeXParser, null, [{
 		key: "parseString",
 		value: function parseString(string) {
-			var isMaths = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+			var context = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
-			if (isMaths) {
-				return new TeXParser(new StringReader(string)).parseMaths();
+			if (context.mathsMode) {
+				return new TeXParser(new StringReader(string), context).parseMaths();
 			} else {
-				return new TeXParser(new StringReader(string)).parseTeX();
+				return new TeXParser(new StringReader(string), context).parseTeX();
 			}
 		}
 	}]);
 
-	function TeXParser(reader, options) {
+	function TeXParser(reader) {
+		var context = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
 		_classCallCheck(this, TeXParser);
 
 		this.reader = reader;
 		this.buffer = "";
 
-		this.options = {};
+		this.context = Object.create(context);
+		this.context.mathsMode = "mathsMode" in this.context ? this.context.mathsMode : false;
+		this.context.mathsDisplayMode = "mathsDisplayMode" in this.context ? this.context.mathsDisplayMode : false;
 	}
 
 	_createClass(TeXParser, [{
@@ -228,15 +232,17 @@ var TeXParser = (function () {
 				return false;
 			}
 
-			this.mathsDisplayMode = this.accept("$");
+			this.context.mathsMode = true;
+			this.context.mathsDisplayMode = !!this.accept("$");
 
-			this.buffer += '<span class="tex-maths' + (this.mathsDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
+			this.buffer += '<span class="tex-maths' + (this.context.mathsDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
 			while (this.reader.hasNext()) {
 				if (this.accept("$")) {
-					if (this.mathsDisplayMode && !this.accept("$")) {
+					if (this.context.mathsDisplayMode && !this.accept("$")) {
 						throw new TeXSyntaxError("Expecting $$, got $");
 					}
 					this.buffer += '</span>';
+					this.context.mathsMode = false;
 					return true;
 				} else {
 					// Do mathemagics
@@ -279,7 +285,7 @@ var TeXParser = (function () {
 					this.parseMathsSymbol();
 					this.buffer += '</sup>';
 				} else if (this.reader.peek() === "{") {
-					this.buffer += TeXParser.parseString(this.readGroup(), true);
+					this.buffer += TeXParser.parseString(this.readGroup(), this.context);
 				} else if (this.parseMacro()) {} else if (out = this.accept(RegExp("[" + MATHS_VARIABLES + "]"))) {
 					this.buffer += '<i class="tex-variable">' + out + '</i>';
 				} else {
@@ -390,18 +396,20 @@ var TeXParser = (function () {
 				throw new TeXSyntaxError("Unexpected \\end{" + args[0] + "}");
 			} else if (macro === "ce") {
 				this.buffer += '<span class="tex-maths-upright">';
-				this.buffer += TeXParser.parseString(args[0], true);
+				this.buffer += TeXParser.parseString(args[0], this.context);
 				this.buffer += '</span>';
 			} else if (macro === "frac") {
 				this.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
-				this.buffer += TeXParser.parseString(args[0], true);
+				this.buffer += TeXParser.parseString(args[0], this.context);
 
-				var denHeight = TeXParser.estimateMathsHeight(args[1], this.mathsDisplayMode);
+				var denHeight = TeXParser.estimateMathsHeight(args[1], this.context);
 				this.buffer += '</span><span class="tex-frac-bar"></span><span class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
 
-				this.buffer += TeXParser.parseString(args[1], true);
+				this.buffer += TeXParser.parseString(args[1], this.context);
 				this.buffer += '</span></span>';
 			} else if (macro === "left") {
+				console.log("LEFT");
+
 				var _readDelimited = this.readDelimited();
 
 				var _readDelimited2 = _slicedToArray(_readDelimited, 3);
@@ -410,10 +418,10 @@ var TeXParser = (function () {
 				var left = _readDelimited2[1];
 				var right = _readDelimited2[2];
 
-				var contentHeight = TeXParser.estimateMathsHeight(content);
+				var contentHeight = TeXParser.estimateMathsHeight(content, this.context);
 				var transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
 				this.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
-				this.buffer += TeXParser.parseString(content, true);
+				this.buffer += TeXParser.parseString(content, this.context);
 				this.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
 				// Anki's QtWebView doesn't support unprefixed CSS transforms :(
 			} else if (macro === "right") {
@@ -429,18 +437,18 @@ var TeXParser = (function () {
 					}
 				} else if (macro === "overline") {
 					this.buffer += '<span class="tex-overline">';
-					this.buffer += TeXParser.parseString(args[0], true);
+					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</span>';
 				} else if (macro === "sqrt") {
 					this.buffer += '<span class="tex-sqrt"><span>';
-					this.buffer += TeXParser.parseString(args[0], true);
+					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</span></span>';
 				} else if (macro === "symbf") {
 					this.buffer += '<b class="tex-symbf">';
-					this.buffer += TeXParser.parseString(args[0], true);
+					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</b>';
 				} else if (macro === "text") {
-					this.buffer += TeXParser.parseString(args[0]);
+					this.buffer += TeXParser.parseString(args[0], this.context);
 				} else {
 					throw new TeXSyntaxError("Unknown macro " + macro);
 				}
@@ -547,8 +555,11 @@ var TeXParser = (function () {
 		value: function parseEnvironment(name) {
 			if (name === "align") {
 				var reader = new StringReader(this.readEnvironment(name));
-				var parser = new TeXParser(reader); // Oh boy...
-				parser.mathsDisplayMode = true;
+
+				var newContext = Object.create(this.context);
+				newContext.mathsDisplayMode = true;
+
+				var parser = new TeXParser(reader, newContext);
 
 				this.buffer += '<div class="tex-align">';
 				this.buffer += '<div><span class="tex-align-lhs">'; // row, col
@@ -596,14 +607,11 @@ var TeXParser = (function () {
 
 	}], [{
 		key: "estimateMathsHeight",
-		value: function estimateMathsHeight(code) {
-			var mathsDisplayMode = arguments.length <= 1 || arguments[1] === undefined ? true : arguments[1];
-
+		value: function estimateMathsHeight(code, context) {
 			var height = 0;
 
 			var reader = new StringReader(code);
-			var parser = new TeXParser(reader);
-			parser.mathsDisplayMode = mathsDisplayMode;
+			var parser = new TeXParser(reader, context);
 
 			while (reader.hasNext()) {
 				// Recurse through macros
@@ -618,7 +626,7 @@ var TeXParser = (function () {
 						var args = _parser$readMacro4[2];
 
 						if (macro === "frac") {
-							height = Math.max(height, TeXParser.estimateMathsHeight(args[0]) + TeXParser.estimateMathsHeight(args[1]));
+							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], this.context) + TeXParser.estimateMathsHeight(args[1], this.context));
 						} else if (macro === "sqrt") {
 							height = Math.max(height, 1.3);
 						} else if (macro === "overline") {
@@ -636,4 +644,4 @@ var TeXParser = (function () {
 	}]);
 
 	return TeXParser;
-})();
+}();

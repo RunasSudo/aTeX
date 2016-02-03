@@ -69,19 +69,21 @@ let MATHS_MACROS = {
 };
 
 class TeXParser {
-	static parseString(string, isMaths = false) {
-		if (isMaths) {
-			return new TeXParser(new StringReader(string)).parseMaths();
+	static parseString(string, context = {}) {
+		if (context.mathsMode) {
+			return new TeXParser(new StringReader(string), context).parseMaths();
 		} else {
-			return new TeXParser(new StringReader(string)).parseTeX();
+			return new TeXParser(new StringReader(string), context).parseTeX();
 		}
 	}
 	
-	constructor(reader, options) {
+	constructor(reader, context = {}) {
 		this.reader = reader;
 		this.buffer = "";
 		
-		this.options = {};
+		this.context = Object.create(context);
+		this.context.mathsMode = "mathsMode" in this.context ? this.context.mathsMode : false;
+		this.context.mathsDisplayMode = "mathsDisplayMode" in this.context ? this.context.mathsDisplayMode : false;
 	}
 	
 	parseTeX() {
@@ -172,15 +174,17 @@ class TeXParser {
 			return false;
 		}
 		
-		this.mathsDisplayMode = this.accept("$");
+		this.context.mathsMode = true;
+		this.context.mathsDisplayMode = !!this.accept("$");
 		
-		this.buffer += '<span class="tex-maths' + (this.mathsDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
+		this.buffer += '<span class="tex-maths' + (this.context.mathsDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
 		while (this.reader.hasNext()) {
 			if (this.accept("$")) {
-				if (this.mathsDisplayMode && !this.accept("$")) {
+				if (this.context.mathsDisplayMode && !this.accept("$")) {
 					throw new TeXSyntaxError("Expecting $$, got $");
 				}
 				this.buffer += '</span>';
+				this.context.mathsMode = false;
 				return true;
 			} else {
 				// Do mathemagics
@@ -220,7 +224,7 @@ class TeXParser {
 			this.parseMathsSymbol();
 			this.buffer += '</sup>';
 		} else if (this.reader.peek() === "{") {
-			this.buffer += TeXParser.parseString(this.readGroup(), true);
+			this.buffer += TeXParser.parseString(this.readGroup(), this.context);
 		} else if (this.parseMacro()) {
 		} else if (out = this.accept(RegExp("[" + MATHS_VARIABLES + "]"))) {
 			this.buffer += '<i class="tex-variable">' + out + '</i>';
@@ -299,27 +303,28 @@ class TeXParser {
 		
 		else if (macro === "ce") {
 			this.buffer += '<span class="tex-maths-upright">';
-			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += TeXParser.parseString(args[0], this.context);
 			this.buffer += '</span>';
 		}
 		
 		else if (macro === "frac") {
 			this.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
-			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += TeXParser.parseString(args[0], this.context);
 			
-			let denHeight = TeXParser.estimateMathsHeight(args[1], this.mathsDisplayMode);
+			let denHeight = TeXParser.estimateMathsHeight(args[1], this.context);
 			this.buffer += '</span><span class="tex-frac-bar"></span><span class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
 			
-			this.buffer += TeXParser.parseString(args[1], true);
+			this.buffer += TeXParser.parseString(args[1], this.context);
 			this.buffer += '</span></span>';
 		}
 		
 		else if (macro === "left") {
+			console.log("LEFT");
 			let [content, left, right] = this.readDelimited();
-			let contentHeight = TeXParser.estimateMathsHeight(content);
+			let contentHeight = TeXParser.estimateMathsHeight(content, this.context);
 			let transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
 			this.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
-			this.buffer += TeXParser.parseString(content, true);
+			this.buffer += TeXParser.parseString(content, this.context);
 			this.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
 			// Anki's QtWebView doesn't support unprefixed CSS transforms :(
 		}
@@ -342,24 +347,24 @@ class TeXParser {
 		
 		else if (macro === "overline") {
 			this.buffer += '<span class="tex-overline">';
-			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += TeXParser.parseString(args[0], this.context);
 			this.buffer += '</span>';
 		}
 		
 		else if (macro === "sqrt") {
 			this.buffer += '<span class="tex-sqrt"><span>';
-			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += TeXParser.parseString(args[0], this.context);
 			this.buffer += '</span></span>';
 		}
 		
 		else if (macro === "symbf") {
 			this.buffer += '<b class="tex-symbf">';
-			this.buffer += TeXParser.parseString(args[0], true);
+			this.buffer += TeXParser.parseString(args[0], this.context);
 			this.buffer += '</b>';
 		}
 		
 		else if (macro === "text") {
-			this.buffer += TeXParser.parseString(args[0]);
+			this.buffer += TeXParser.parseString(args[0], this.context);
 		}
 		
 		else {
@@ -442,8 +447,11 @@ class TeXParser {
 	parseEnvironment(name) {
 		if (name === "align") {
 			let reader = new StringReader(this.readEnvironment(name));
-			let parser = new TeXParser(reader); // Oh boy...
-			parser.mathsDisplayMode = true;
+			
+			let newContext = Object.create(this.context);
+			newContext.mathsDisplayMode = true;
+			
+			let parser = new TeXParser(reader, newContext);
 			
 			this.buffer += '<div class="tex-align">';
 			this.buffer += '<div><span class="tex-align-lhs">'; // row, col
@@ -482,12 +490,11 @@ class TeXParser {
 	}
 	
 	// Estimate the height of the given maths-mode code in em's
-	static estimateMathsHeight(code, mathsDisplayMode = true) {
+	static estimateMathsHeight(code, context) {
 		let height = 0;
 		
 		let reader = new StringReader(code);
-		let parser = new TeXParser(reader);
-		parser.mathsDisplayMode = mathsDisplayMode;
+		let parser = new TeXParser(reader, context);
 		
 		while (reader.hasNext()) {
 			// Recurse through macros
@@ -496,7 +503,7 @@ class TeXParser {
 					let [macro, starred, args] = parser.readMacro();
 					
 					if (macro === "frac") {
-						height = Math.max(height, TeXParser.estimateMathsHeight(args[0]) + TeXParser.estimateMathsHeight(args[1]));
+						height = Math.max(height, TeXParser.estimateMathsHeight(args[0], this.context) + TeXParser.estimateMathsHeight(args[1], this.context));
 					} else if (macro === "sqrt") {
 						height = Math.max(height, 1.3);
 					} else if (macro === "overline") {
