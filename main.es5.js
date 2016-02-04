@@ -181,7 +181,7 @@ var TeXSyntaxError = function (_Error) {
 
 var MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
 var MATHS_BINARIES = "+×÷=><≥≤";
-var MATHS_ACTIVES = "\\^\\- _'\\*";
+var MATHS_ACTIVES = "\\^\\- _\\*'";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS = {
@@ -384,6 +384,8 @@ var TeXParser = function () {
 					}
 			} else if (this.accept("*")) {
 					this.buffer += '∗';
+				} else if (this.accept("'")) {
+					this.buffer += '′';
 				} else if (out = this.accept(/[_\^]/)) {
 					var newContext = Object.create(this.context);
 					if (this.context.mathsMode == "ce") newContext.mathsMode = "compact";

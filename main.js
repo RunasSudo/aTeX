@@ -121,7 +121,7 @@ class TeXSyntaxError extends Error {
 // why u no class variables, JS?
 let MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
 let MATHS_BINARIES = "+×÷=><≥≤";
-let MATHS_ACTIVES = "\\^\\- _'\\*";
+let MATHS_ACTIVES = "\\^\\- _\\*'";
 let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 let MATHS_MACROS = {
@@ -295,6 +295,8 @@ class TeXParser {
 			}
 		} else if (this.accept("*")) {
 			this.buffer += '∗';
+		} else if (this.accept("'")) {
+			this.buffer += '′'
 		} else if (out = this.accept(/[_\^]/)) {
 			let newContext = Object.create(this.context);
 			if (this.context.mathsMode == "ce")
