@@ -2,6 +2,8 @@
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -26,12 +28,35 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 //    You should have received a copy of the GNU Affero General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-var StringReader = function () {
+var Reader = function () {
+	function Reader() {
+		_classCallCheck(this, Reader);
+	}
+
+	_createClass(Reader, [{
+		key: "mutate",
+		value: function mutate(context) {
+			var reader = this;
+			// Only process entities in maths mode
+			reader = context.mathsMode && context.parseEntities ? reader.toHtmlAware() : reader.notHtmlAware();
+			return reader;
+		}
+	}]);
+
+	return Reader;
+}();
+
+var StringReader = function (_Reader) {
+	_inherits(StringReader, _Reader);
+
 	function StringReader(string) {
 		_classCallCheck(this, StringReader);
 
-		this.string = string;
-		this.ptr = 0;
+		var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(StringReader).call(this));
+
+		_this.string = string;
+		_this.ptr = 0;
+		return _this;
 	}
 
 	_createClass(StringReader, [{
@@ -47,7 +72,7 @@ var StringReader = function () {
 	}, {
 		key: "peek",
 		value: function peek() {
-			if (this.ptr >= this.string.length) {
+			if (!this.hasNext()) {
 				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			return this.string[this.ptr];
@@ -55,15 +80,86 @@ var StringReader = function () {
 	}, {
 		key: "next",
 		value: function next() {
-			if (this.ptr >= this.string.length) {
-				throw new TeXSyntaxError("Unexpected EOF");
-			}
-			return this.string[this.ptr++];
+			var result = this.peek();
+			this.ptr++;
+			return result;
+		}
+	}, {
+		key: "toHtmlAware",
+		value: function toHtmlAware() {
+			var reader = new HTMLAwareStringReader(this.string);
+			reader.ptr = this.ptr;
+			return reader;
+		}
+	}, {
+		key: "notHtmlAware",
+		value: function notHtmlAware() {
+			var reader = new StringReader(this.string);
+			reader.ptr = this.ptr;
+			return reader;
 		}
 	}]);
 
 	return StringReader;
-}();
+}(Reader);
+
+var HTMLAwareStringReader = function (_StringReader) {
+	_inherits(HTMLAwareStringReader, _StringReader);
+
+	function HTMLAwareStringReader(string) {
+		_classCallCheck(this, HTMLAwareStringReader);
+
+		return _possibleConstructorReturn(this, Object.getPrototypeOf(HTMLAwareStringReader).call(this, string));
+	}
+
+	_createClass(HTMLAwareStringReader, [{
+		key: "readEntity",
+		value: function readEntity() {
+			var out = "";
+			var entity = "";
+			var ptr = this.ptr;
+			while (this.hasNext() && (out = this.string[ptr++]) != ";") {
+				entity += out;
+			}
+			return entity + ";";
+		}
+	}, {
+		key: "peek",
+		value: function peek() {
+			if (!this.hasNext()) {
+				throw new TeXSyntaxError("Unexpected EOF");
+			}
+			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
+				var tmp = document.createElement("div");
+				tmp.innerHTML = this.readEntity();
+				return tmp.textContent;
+			} else {
+				return _get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this);
+			}
+		}
+	}, {
+		key: "next",
+		value: function next() {
+			if (!this.hasNext()) {
+				throw new TeXSyntaxError("Unexpected EOF");
+			}
+			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
+				var entity = this.readEntity();
+				this.ptr += entity.length;
+
+				var tmp = document.createElement("div");
+				tmp.innerHTML = entity;
+				return tmp.textContent;
+			}
+
+			var result = this.peek();
+			this.ptr++;
+			return result;
+		}
+	}]);
+
+	return HTMLAwareStringReader;
+}(StringReader);
 
 var TeXSyntaxError = function (_Error) {
 	_inherits(TeXSyntaxError, _Error);
@@ -71,11 +167,11 @@ var TeXSyntaxError = function (_Error) {
 	function TeXSyntaxError(message) {
 		_classCallCheck(this, TeXSyntaxError);
 
-		var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(TeXSyntaxError).call(this, message));
+		var _this3 = _possibleConstructorReturn(this, Object.getPrototypeOf(TeXSyntaxError).call(this, message));
 
-		_this.name = "TeXSyntaxError";
-		_this.message = message;
-		return _this;
+		_this3.name = "TeXSyntaxError";
+		_this3.message = message;
+		return _this3;
 	}
 
 	return TeXSyntaxError;
@@ -109,9 +205,9 @@ var TeXParser = function () {
 			var context = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
 			if (context.mathsMode) {
-				return new TeXParser(new StringReader(string), context).parseMaths();
+				return new TeXParser(new StringReader(string).mutate(context), context).parseMaths();
 			} else {
-				return new TeXParser(new StringReader(string), context).parseTeX();
+				return new TeXParser(new StringReader(string).mutate(context), context).parseTeX();
 			}
 		}
 	}]);
@@ -127,6 +223,7 @@ var TeXParser = function () {
 		this.context = Object.create(context);
 		this.context.mathsMode = "mathsMode" in this.context ? this.context.mathsMode : false;
 		this.context.mathsDisplayMode = "mathsDisplayMode" in this.context ? this.context.mathsDisplayMode : false;
+		this.context.parseEntities = "parseEntities" in this.context ? this.context.parseEntities : false;
 	}
 
 	_createClass(TeXParser, [{
@@ -238,6 +335,7 @@ var TeXParser = function () {
 			}
 
 			this.context.mathsMode = this.accept("$") ? "display" : "inline";
+			this.reader = this.reader.mutate(this.context);
 
 			this.buffer += '<span class="tex-maths tex-maths-' + this.context.mathsMode + '">';
 			while (this.reader.hasNext()) {
@@ -247,6 +345,8 @@ var TeXParser = function () {
 					}
 					this.buffer += '</span>';
 					this.context.mathsMode = false;
+					this.reader = this.reader.mutate(this.context);
+
 					return true;
 				} else {
 					// Do mathemagics

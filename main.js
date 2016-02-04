@@ -14,8 +14,18 @@
 //    You should have received a copy of the GNU Affero General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-class StringReader {
+class Reader {
+	mutate(context) {
+		let reader = this;
+		// Only process entities in maths mode
+		reader = (context.mathsMode && context.parseEntities) ? reader.toHtmlAware() : reader.notHtmlAware();
+		return reader;
+	}
+}
+
+class StringReader extends Reader {
 	constructor(string) {
+		super()
 		this.string = string;
 		this.ptr = 0;
 	}
@@ -29,17 +39,74 @@ class StringReader {
 	}
 	
 	peek() {
-		if (this.ptr >= this.string.length) {
+		if (!this.hasNext()) {
 			throw new TeXSyntaxError("Unexpected EOF");
 		}
 		return this.string[this.ptr];
 	}
 	
 	next() {
-		if (this.ptr >= this.string.length) {
+		let result = this.peek();
+		this.ptr++;
+		return result;
+	}
+	
+	toHtmlAware() {
+		let reader = new HTMLAwareStringReader(this.string);
+		reader.ptr = this.ptr;
+		return reader;
+	}
+	notHtmlAware() {
+		let reader = new StringReader(this.string);
+		reader.ptr = this.ptr;
+		return reader;
+	}
+}
+
+class HTMLAwareStringReader extends StringReader {
+	constructor(string) {
+		super(string);
+	}
+	
+	readEntity() {
+		let out = "";
+		let entity = "";
+		let ptr = this.ptr;
+		while (this.hasNext() && (out = this.string[ptr++]) != ";") {
+			entity += out;
+		}
+		return entity + ";";
+	}
+	
+	peek() {
+		if (!this.hasNext()) {
 			throw new TeXSyntaxError("Unexpected EOF");
 		}
-		return this.string[this.ptr++];
+		if (super.peek() === "&") {
+			let tmp = document.createElement("div");
+			tmp.innerHTML = this.readEntity();
+			return tmp.textContent;
+		} else {
+			return super.peek();
+		}
+	}
+	
+	next() {
+		if (!this.hasNext()) {
+			throw new TeXSyntaxError("Unexpected EOF");
+		}
+		if (super.peek() === "&") {
+			let entity = this.readEntity();
+			this.ptr += entity.length;
+			
+			let tmp = document.createElement("div");
+			tmp.innerHTML = entity;
+			return tmp.textContent;
+		}
+		
+		let result = this.peek();
+		this.ptr++;
+		return result;
 	}
 }
 
@@ -74,9 +141,9 @@ let MATHS_MACROS_BINARIES = {
 class TeXParser {
 	static parseString(string, context = {}) {
 		if (context.mathsMode) {
-			return new TeXParser(new StringReader(string), context).parseMaths();
+			return new TeXParser(new StringReader(string).mutate(context), context).parseMaths();
 		} else {
-			return new TeXParser(new StringReader(string), context).parseTeX();
+			return new TeXParser(new StringReader(string).mutate(context), context).parseTeX();
 		}
 	}
 	
@@ -87,6 +154,7 @@ class TeXParser {
 		this.context = Object.create(context);
 		this.context.mathsMode = "mathsMode" in this.context ? this.context.mathsMode : false;
 		this.context.mathsDisplayMode = "mathsDisplayMode" in this.context ? this.context.mathsDisplayMode : false;
+		this.context.parseEntities = "parseEntities" in this.context ? this.context.parseEntities : false;
 	}
 	
 	parseTeX() {
@@ -180,6 +248,7 @@ class TeXParser {
 		}
 		
 		this.context.mathsMode = this.accept("$") ? "display" : "inline";
+		this.reader = this.reader.mutate(this.context);
 		
 		this.buffer += '<span class="tex-maths tex-maths-' + this.context.mathsMode + '">';
 		while (this.reader.hasNext()) {
@@ -188,7 +257,10 @@ class TeXParser {
 					throw new TeXSyntaxError("Expecting $$, got $");
 				}
 				this.buffer += '</span>';
+				
 				this.context.mathsMode = false;
+				this.reader = this.reader.mutate(this.context);
+				
 				return true;
 			} else {
 				// Do mathemagics
