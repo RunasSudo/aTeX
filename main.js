@@ -253,7 +253,7 @@ class TeXParser {
 		this.buffer += '<span class="tex-maths tex-maths-' + this.context.mathsMode + '">';
 		while (this.reader.hasNext()) {
 			if (this.accept("$")) {
-				if (this.context.mathsMode == "display" && !this.accept("$")) {
+				if (this.context.mathsMode === "display" && !this.accept("$")) {
 					throw new TeXSyntaxError("Expecting $$, got $");
 				}
 				this.buffer += '</span>';
@@ -277,14 +277,14 @@ class TeXParser {
 		if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
 			this.buffer += out;
 		} else if (out = this.accept(RegExp("[" + MATHS_BINARIES + "]"))) {
-			if (this.context.mathsMode == "compact") {
+			if (this.context.mathsMode === "compact") {
 				this.buffer += out;
 			} else {
 				this.buffer += ' ' + out + ' ';
 			}
 		} else if (this.accept(" ")) {
 		} else if (this.accept("-")) {
-			if (this.context.mathsMode == "ce" && this.accept(">")) {
+			if (this.context.mathsMode === "ce" && this.accept(">")) {
 				this.buffer += ' ⟶ '; // It's actually an arrow in disguise
 			} else {
 				if (this.buffer.endsWith(" ")) { // Last input was probably an operator
@@ -299,7 +299,7 @@ class TeXParser {
 			this.buffer += '′'
 		} else if (out = this.accept(/[_\^]/)) {
 			let newContext = Object.create(this.context);
-			if (this.context.mathsMode == "ce")
+			if (this.context.mathsMode === "ce")
 				newContext.mathsMode = "compact"
 			let parser = new TeXParser(this.reader, newContext);
 			
@@ -386,7 +386,7 @@ class TeXParser {
 			this.buffer += MATHS_MACROS[macro];
 		}
 		else if (MATHS_MACROS_BINARIES[macro]) {
-			if (this.context.mathsMode == "compact") {
+			if (this.context.mathsMode === "compact") {
 				this.buffer += MATHS_MACROS_BINARIES[macro];
 			} else {
 				this.buffer += ' ' + MATHS_MACROS_BINARIES[macro] + ' ';
@@ -466,14 +466,17 @@ class TeXParser {
 		}
 		
 		else if (macro === "text") {
-			this.buffer += TeXParser.parseString(args[0], this.context);
+			let newContext = Object.create(this.context);
+			newContext.mathsMode = false;
+			
+			this.buffer += TeXParser.parseString(args[0], newContext);
 		}
 		
 		else {
 			throw new TeXSyntaxError("Unknown macro " + macro);
 		}
 		
-		if (args.length == 0) {
+		if (args.length === 0) {
 			this.accept(" ");
 		}
 		
