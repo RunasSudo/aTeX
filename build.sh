@@ -1,2 +1,2 @@
 #!/bin/bash
-babel main.js --presets es2015 -o main.es5.js
+babel {main,readers}.js -o main.es5.js --presets es2015

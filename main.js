@@ -1,5 +1,5 @@
 //    aTeX - Lightweight TeX-style mathematics in JavaScript
-//    Copyright © 2015  RunasSudo (Yingtong Li)
+//    Copyright © 2015-2016  RunasSudo (Yingtong Li)
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU Affero General Public License as published by
@@ -13,102 +13,6 @@
 //
 //    You should have received a copy of the GNU Affero General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-class Reader {
-	mutate(context) {
-		let reader = this;
-		// Only process entities in maths mode
-		reader = (context.mathsMode && context.parseEntities) ? reader.toHtmlAware() : reader.notHtmlAware();
-		return reader;
-	}
-}
-
-class StringReader extends Reader {
-	constructor(string) {
-		super()
-		this.string = string;
-		this.ptr = 0;
-	}
-	
-	getPos() {
-		return this.ptr;
-	}
-	
-	hasNext() {
-		return this.ptr < this.string.length;
-	}
-	
-	peek() {
-		if (!this.hasNext()) {
-			throw new TeXSyntaxError("Unexpected EOF");
-		}
-		return this.string[this.ptr];
-	}
-	
-	next() {
-		let result = this.peek();
-		this.ptr++;
-		return result;
-	}
-	
-	toHtmlAware() {
-		let reader = new HTMLAwareStringReader(this.string);
-		reader.ptr = this.ptr;
-		return reader;
-	}
-	notHtmlAware() {
-		let reader = new StringReader(this.string);
-		reader.ptr = this.ptr;
-		return reader;
-	}
-}
-
-class HTMLAwareStringReader extends StringReader {
-	constructor(string) {
-		super(string);
-	}
-	
-	readEntity() {
-		let out = "";
-		let entity = "";
-		let ptr = this.ptr;
-		while (this.hasNext() && (out = this.string[ptr++]) != ";") {
-			entity += out;
-		}
-		return entity + ";";
-	}
-	
-	peek() {
-		if (!this.hasNext()) {
-			throw new TeXSyntaxError("Unexpected EOF");
-		}
-		if (super.peek() === "&") {
-			let tmp = document.createElement("div");
-			tmp.innerHTML = this.readEntity();
-			return tmp.textContent;
-		} else {
-			return super.peek();
-		}
-	}
-	
-	next() {
-		if (!this.hasNext()) {
-			throw new TeXSyntaxError("Unexpected EOF");
-		}
-		if (super.peek() === "&") {
-			let entity = this.readEntity();
-			this.ptr += entity.length;
-			
-			let tmp = document.createElement("div");
-			tmp.innerHTML = entity;
-			return tmp.textContent;
-		}
-		
-		let result = this.peek();
-		this.ptr++;
-		return result;
-	}
-}
 
 class TeXSyntaxError extends Error {
 	constructor(message) {
@@ -551,7 +455,7 @@ class TeXParser {
 	
 	parseEnvironment(name) {
 		if (name === "align") {
-			let reader = new StringReader(this.readEnvironment(name));
+			let reader = new StringReader(this.readEnvironment(name)).mutate(this.context);
 			
 			let newContext = Object.create(this.context);
 			newContext.mathsMode = "display";
@@ -598,7 +502,7 @@ class TeXParser {
 	static estimateMathsHeight(code, context) {
 		let height = 0;
 		
-		let reader = new StringReader(code);
+		let reader = new StringReader(code).mutate(this.context);
 		let parser = new TeXParser(reader, context);
 		
 		while (reader.hasNext()) {
