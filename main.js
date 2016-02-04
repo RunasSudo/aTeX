@@ -30,14 +30,14 @@ class StringReader {
 	
 	peek() {
 		if (this.ptr >= this.string.length) {
-			return "EOF";
+			throw new TeXSyntaxError("Unexpected EOF");
 		}
 		return this.string[this.ptr];
 	}
 	
 	next() {
 		if (this.ptr >= this.string.length) {
-			return "EOF";
+			throw new TeXSyntaxError("Unexpected EOF");
 		}
 		return this.string[this.ptr++];
 	}
@@ -122,12 +122,14 @@ class TeXParser {
 	
 	// Swallow and return next character if matches regex, otherwise return false.
 	accept(regex, strict = false) {
-		if (typeof(regex) === "string") {
-			if (this.reader.peek() === regex) {
+		if (this.reader.hasNext()) {
+			if (typeof(regex) === "string") {
+				if (this.reader.peek() === regex) {
+					return this.reader.next();
+				}
+			} else if (this.reader.peek().match(regex)) {
 				return this.reader.next();
 			}
-		} else if (this.reader.peek().match(regex)) {
-			return this.reader.next();
 		}
 		
 		if (strict) {

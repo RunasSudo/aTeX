@@ -48,7 +48,7 @@ var StringReader = function () {
 		key: "peek",
 		value: function peek() {
 			if (this.ptr >= this.string.length) {
-				return "EOF";
+				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			return this.string[this.ptr];
 		}
@@ -56,7 +56,7 @@ var StringReader = function () {
 		key: "next",
 		value: function next() {
 			if (this.ptr >= this.string.length) {
-				return "EOF";
+				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			return this.string[this.ptr++];
 		}
@@ -170,12 +170,14 @@ var TeXParser = function () {
 		value: function accept(regex) {
 			var strict = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
 
-			if (typeof regex === "string") {
-				if (this.reader.peek() === regex) {
+			if (this.reader.hasNext()) {
+				if (typeof regex === "string") {
+					if (this.reader.peek() === regex) {
+						return this.reader.next();
+					}
+				} else if (this.reader.peek().match(regex)) {
 					return this.reader.next();
 				}
-			} else if (this.reader.peek().match(regex)) {
-				return this.reader.next();
 			}
 
 			if (strict) {
