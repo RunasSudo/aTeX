@@ -502,7 +502,7 @@ class TeXParser {
 	static estimateMathsHeight(code, context) {
 		let height = 0;
 		
-		let reader = new StringReader(code).mutate(this.context);
+		let reader = new StringReader(code).mutate(context);
 		let parser = new TeXParser(reader, context);
 		
 		while (reader.hasNext()) {
@@ -512,7 +512,7 @@ class TeXParser {
 					let [macro, starred, args] = parser.readMacro();
 					
 					if (macro === "frac") {
-						height = Math.max(height, TeXParser.estimateMathsHeight(args[0], this.context) + TeXParser.estimateMathsHeight(args[1], this.context));
+						height = Math.max(height, TeXParser.estimateMathsHeight(args[0], context) + TeXParser.estimateMathsHeight(args[1], context));
 					} else if (macro === "sqrt") {
 						height = Math.max(height, 1.3);
 					} else if (macro === "overline") {

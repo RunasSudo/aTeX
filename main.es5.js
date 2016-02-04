@@ -606,7 +606,7 @@ var TeXParser = function () {
 		value: function estimateMathsHeight(code, context) {
 			var height = 0;
 
-			var reader = new StringReader(code).mutate(this.context);
+			var reader = new StringReader(code).mutate(context);
 			var parser = new TeXParser(reader, context);
 
 			while (reader.hasNext()) {
@@ -622,7 +622,7 @@ var TeXParser = function () {
 						var args = _parser$readMacro4[2];
 
 						if (macro === "frac") {
-							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], this.context) + TeXParser.estimateMathsHeight(args[1], this.context));
+							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], context) + TeXParser.estimateMathsHeight(args[1], context));
 						} else if (macro === "sqrt") {
 							height = Math.max(height, 1.3);
 						} else if (macro === "overline") {
