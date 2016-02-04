@@ -58,15 +58,18 @@ let MATHS_ACTIVES = "\\^\\- _'\\*";
 let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 let MATHS_MACROS = {
-	approx: ' ≈ ',
 	cos: 'cos ',
-	propto: ' ∝ ',
+	rightarrow: ' ⟶ ',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
-	times: ' × ',
 	uDelta: 'Δ',
 };
+let MATHS_MACROS_BINARIES = {
+	approx: '≈',
+	propto: '∝',
+	times: '×',
+}
 
 class TeXParser {
 	static parseString(string, context = {}) {
@@ -174,13 +177,12 @@ class TeXParser {
 			return false;
 		}
 		
-		this.context.mathsMode = true;
-		this.context.mathsDisplayMode = !!this.accept("$");
+		this.context.mathsMode = this.accept("$") ? "display" : "inline";
 		
-		this.buffer += '<span class="tex-maths' + (this.context.mathsDisplayMode ? ' tex-maths-display' : ' tex-maths-inline') + '">';
+		this.buffer += '<span class="tex-maths tex-maths-' + this.context.mathsMode + '">';
 		while (this.reader.hasNext()) {
 			if (this.accept("$")) {
-				if (this.context.mathsDisplayMode && !this.accept("$")) {
+				if (this.context.mathsMode == "display" && !this.accept("$")) {
 					throw new TeXSyntaxError("Expecting $$, got $");
 				}
 				this.buffer += '</span>';
@@ -201,28 +203,41 @@ class TeXParser {
 		if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
 			this.buffer += out;
 		} else if (out = this.accept(RegExp("[" + MATHS_BINARIES + "]"))) {
-			this.buffer += ' ' + out + ' ';
+			if (this.context.mathsMode == "compact") {
+				this.buffer += out;
+			} else {
+				this.buffer += ' ' + out + ' ';
+			}
 		} else if (this.accept(" ")) {
 		} else if (this.accept("-")) {
-			if (this.buffer.endsWith(" ")) { // Last input was probably an operator
-				this.buffer += '−'; // Unary minus
+			if (this.context.mathsMode == "ce" && this.accept(">")) {
+				this.buffer += ' ⟶ '; // It's actually an arrow in disguise
 			} else {
-				this.buffer += ' − '; // Binary minus
+				if (this.buffer.endsWith(" ")) { // Last input was probably an operator
+					this.buffer += '−'; // Unary minus
+				} else {
+					this.buffer += ' − '; // Binary minus
+				}
 			}
 		} else if (this.accept("*")) {
 			this.buffer += '∗';
 		} else if (out = this.accept(/[_\^]/)) {
+			let newContext = Object.create(this.context);
+			if (this.context.mathsMode == "ce")
+				newContext.mathsMode = "compact"
+			let parser = new TeXParser(this.reader, newContext);
+			
 			this.buffer += '<span class="tex-subsup">';
 			do {
 				this.buffer += '<span class="' + (out === "_" ? 'sub' : 'sup') + '">';
-				this.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
+				
+				parser.buffer = "";
+				parser.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
+				this.buffer += parser.buffer;
+				
 				this.buffer += '</span>';
 			} while (out = this.accept(/[_\^]/)); // Too much recursion. Time for loops!
 			this.buffer += '</span>';
-		} else if (this.accept("^")) {
-			this.buffer += '<sup>';
-			this.parseMathsSymbol();
-			this.buffer += '</sup>';
 		} else if (this.reader.peek() === "{") {
 			this.buffer += TeXParser.parseString(this.readGroup(), this.context);
 		} else if (this.parseMacro()) {
@@ -290,8 +305,16 @@ class TeXParser {
 	
 	handleMacro(macro, starred, args) {
 		// WARNING: The whitespace that follows is misleading!
+		
 		if (MATHS_MACROS[macro]) {
 			this.buffer += MATHS_MACROS[macro];
+		}
+		else if (MATHS_MACROS_BINARIES[macro]) {
+			if (this.context.mathsMode == "compact") {
+				this.buffer += MATHS_MACROS_BINARIES[macro];
+			} else {
+				this.buffer += ' ' + MATHS_MACROS_BINARIES[macro] + ' ';
+			}
 		}
 		
 		else if (macro === "begin") {
@@ -303,7 +326,11 @@ class TeXParser {
 		
 		else if (macro === "ce") {
 			this.buffer += '<span class="tex-maths-upright">';
-			this.buffer += TeXParser.parseString(args[0], this.context);
+			
+			let newContext = Object.create(this.context);
+			newContext.mathsMode = "ce";
+			
+			this.buffer += TeXParser.parseString(args[0], newContext);
 			this.buffer += '</span>';
 		}
 		
@@ -319,7 +346,6 @@ class TeXParser {
 		}
 		
 		else if (macro === "left") {
-			console.log("LEFT");
 			let [content, left, right] = this.readDelimited();
 			let contentHeight = TeXParser.estimateMathsHeight(content, this.context);
 			let transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
@@ -449,7 +475,7 @@ class TeXParser {
 			let reader = new StringReader(this.readEnvironment(name));
 			
 			let newContext = Object.create(this.context);
-			newContext.mathsDisplayMode = true;
+			newContext.mathsMode = "display";
 			
 			let parser = new TeXParser(reader, newContext);
 			
