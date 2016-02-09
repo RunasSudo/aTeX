@@ -23,14 +23,17 @@ class TeXSyntaxError extends Error {
 }
 
 // why u no class variables, JS?
-let MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
-let MATHS_BINARIES = "+×÷=><≥≤";
+let MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
+let MATHS_BINARIES = "+×÷=≈><≥≤";
 let MATHS_ACTIVES = "\\^\\- _\\*'";
 let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 let MATHS_MACROS = {
 	cos: 'cos ',
+	leftarrow: ' ↑ ',
 	rightarrow: ' ⟶ ',
+	downarrow: ' ↓ ',
+	leftarrow: ' ← ',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',

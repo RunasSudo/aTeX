@@ -44,14 +44,17 @@ var TeXSyntaxError = function (_Error) {
 
 // why u no class variables, JS?
 
-var MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
-var MATHS_BINARIES = "+×÷=><≥≤";
+var MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
+var MATHS_BINARIES = "+×÷=≈><≥≤";
 var MATHS_ACTIVES = "\\^\\- _\\*'";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS = {
 	cos: 'cos ',
+	leftarrow: ' ↑ ',
 	rightarrow: ' ⟶ ',
+	downarrow: ' ↓ ',
+	leftarrow: ' ← ',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
