@@ -34,9 +34,11 @@ let MATHS_MACROS = {
 	rightarrow: ' ⟶ ',
 	downarrow: ' ↓ ',
 	leftarrow: ' ← ',
+	'in': '∈',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
+	therefore: '∴ ',
 	uDelta: 'Δ',
 };
 let MATHS_MACROS_BINARIES = {
@@ -367,7 +369,13 @@ class TeXParser {
 		}
 		
 		else if (macro === "symbf") {
-			this.buffer += '<b class="tex-symbf">';
+			this.buffer += '<b class="tex-bold">';
+			this.buffer += TeXParser.parseString(args[0], this.context);
+			this.buffer += '</b>';
+		}
+		
+		else if (macro === "symup") {
+			this.buffer += '<b class="tex-maths-upright">';
 			this.buffer += TeXParser.parseString(args[0], this.context);
 			this.buffer += '</b>';
 		}

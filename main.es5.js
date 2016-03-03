@@ -44,6 +44,7 @@ var TeXSyntaxError = function (_Error) {
 
 // why u no class variables, JS?
 
+
 var MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
 var MATHS_BINARIES = "+×÷=≈><≥≤";
 var MATHS_ACTIVES = "\\^\\- _\\*'";
@@ -55,9 +56,11 @@ var MATHS_MACROS = {
 	rightarrow: ' ⟶ ',
 	downarrow: ' ↓ ',
 	leftarrow: ' ← ',
+	'in': '∈',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
+	therefore: '∴ ',
 	uDelta: 'Δ'
 };
 var MATHS_MACROS_BINARIES = {
@@ -440,7 +443,11 @@ var TeXParser = function () {
 					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</span></span>';
 				} else if (macro === "symbf") {
-					this.buffer += '<b class="tex-symbf">';
+					this.buffer += '<b class="tex-bold">';
+					this.buffer += TeXParser.parseString(args[0], this.context);
+					this.buffer += '</b>';
+				} else if (macro === "symup") {
+					this.buffer += '<b class="tex-maths-upright">';
 					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</b>';
 				} else if (macro === "text") {
@@ -478,6 +485,7 @@ var TeXParser = function () {
 						var macro = _readMacro4[0];
 						var starred = _readMacro4[1];
 						var args = _readMacro4[2];
+
 
 						if (macro === "left") {
 							var _readDelimited3 = this.readDelimited();
@@ -524,6 +532,7 @@ var TeXParser = function () {
 						var macro = _readMacro6[0];
 						var starred = _readMacro6[1];
 						var args = _readMacro6[2];
+
 
 						if (macro === "begin") {
 							buffer += "\\begin{";
