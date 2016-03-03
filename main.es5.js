@@ -4,14 +4,14 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
 //    aTeX - Lightweight TeX-style mathematics in JavaScript
-//    Copyright © 2015  RunasSudo (Yingtong Li)
+//    Copyright © 2015-2016  RunasSudo (Yingtong Li)
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU Affero General Public License as published by
@@ -25,45 +25,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 //
 //    You should have received a copy of the GNU Affero General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-var StringReader = function () {
-	function StringReader(string) {
-		_classCallCheck(this, StringReader);
-
-		this.string = string;
-		this.ptr = 0;
-	}
-
-	_createClass(StringReader, [{
-		key: "getPos",
-		value: function getPos() {
-			return this.ptr;
-		}
-	}, {
-		key: "hasNext",
-		value: function hasNext() {
-			return this.ptr < this.string.length;
-		}
-	}, {
-		key: "peek",
-		value: function peek() {
-			if (this.ptr >= this.string.length) {
-				throw new TeXSyntaxError("Unexpected EOF");
-			}
-			return this.string[this.ptr];
-		}
-	}, {
-		key: "next",
-		value: function next() {
-			if (this.ptr >= this.string.length) {
-				throw new TeXSyntaxError("Unexpected EOF");
-			}
-			return this.string[this.ptr++];
-		}
-	}]);
-
-	return StringReader;
-}();
 
 var TeXSyntaxError = function (_Error) {
 	_inherits(TeXSyntaxError, _Error);
@@ -83,17 +44,23 @@ var TeXSyntaxError = function (_Error) {
 
 // why u no class variables, JS?
 
-var MATHS_UPRIGHTS = "0-9Δ∞%\\(\\)\\[\\]\\?";
-var MATHS_BINARIES = "+×÷=><≥≤";
-var MATHS_ACTIVES = "\\^\\- _'\\*";
+
+var MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
+var MATHS_BINARIES = "+×÷=≈><≥≤";
+var MATHS_ACTIVES = "\\^\\- _\\*'";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS = {
 	cos: 'cos ',
+	leftarrow: ' ↑ ',
 	rightarrow: ' ⟶ ',
+	downarrow: ' ↓ ',
+	leftarrow: ' ← ',
+	'in': '∈',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
+	therefore: '∴ ',
 	uDelta: 'Δ'
 };
 var MATHS_MACROS_BINARIES = {
@@ -109,9 +76,9 @@ var TeXParser = function () {
 			var context = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
 			if (context.mathsMode) {
-				return new TeXParser(new StringReader(string), context).parseMaths();
+				return new TeXParser(new StringReader(string).mutate(context), context).parseMaths();
 			} else {
-				return new TeXParser(new StringReader(string), context).parseTeX();
+				return new TeXParser(new StringReader(string).mutate(context), context).parseTeX();
 			}
 		}
 	}]);
@@ -127,6 +94,7 @@ var TeXParser = function () {
 		this.context = Object.create(context);
 		this.context.mathsMode = "mathsMode" in this.context ? this.context.mathsMode : false;
 		this.context.mathsDisplayMode = "mathsDisplayMode" in this.context ? this.context.mathsDisplayMode : false;
+		this.context.parseEntities = "parseEntities" in this.context ? this.context.parseEntities : false;
 	}
 
 	_createClass(TeXParser, [{
@@ -238,15 +206,19 @@ var TeXParser = function () {
 			}
 
 			this.context.mathsMode = this.accept("$") ? "display" : "inline";
+			this.reader = this.reader.mutate(this.context);
 
 			this.buffer += '<span class="tex-maths tex-maths-' + this.context.mathsMode + '">';
 			while (this.reader.hasNext()) {
 				if (this.accept("$")) {
-					if (this.context.mathsMode == "display" && !this.accept("$")) {
+					if (this.context.mathsMode === "display" && !this.accept("$")) {
 						throw new TeXSyntaxError("Expecting $$, got $");
 					}
 					this.buffer += '</span>';
+
 					this.context.mathsMode = false;
+					this.reader = this.reader.mutate(this.context);
+
 					return true;
 				} else {
 					// Do mathemagics
@@ -266,13 +238,13 @@ var TeXParser = function () {
 			if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
 				this.buffer += out;
 			} else if (out = this.accept(RegExp("[" + MATHS_BINARIES + "]"))) {
-				if (this.context.mathsMode == "compact") {
+				if (this.context.mathsMode === "compact") {
 					this.buffer += out;
 				} else {
 					this.buffer += ' ' + out + ' ';
 				}
 			} else if (this.accept(" ")) {} else if (this.accept("-")) {
-				if (this.context.mathsMode == "ce" && this.accept(">")) {
+				if (this.context.mathsMode === "ce" && this.accept(">")) {
 					this.buffer += ' ⟶ '; // It's actually an arrow in disguise
 				} else {
 						if (this.buffer.endsWith(" ")) {
@@ -284,9 +256,11 @@ var TeXParser = function () {
 					}
 			} else if (this.accept("*")) {
 					this.buffer += '∗';
+				} else if (this.accept("'")) {
+					this.buffer += '′';
 				} else if (out = this.accept(/[_\^]/)) {
 					var newContext = Object.create(this.context);
-					if (this.context.mathsMode == "ce") newContext.mathsMode = "compact";
+					if (this.context.mathsMode === "ce") newContext.mathsMode = "compact";
 					var parser = new TeXParser(this.reader, newContext);
 
 					this.buffer += '<span class="tex-subsup">';
@@ -408,7 +382,7 @@ var TeXParser = function () {
 			if (MATHS_MACROS[macro]) {
 				this.buffer += MATHS_MACROS[macro];
 			} else if (MATHS_MACROS_BINARIES[macro]) {
-				if (this.context.mathsMode == "compact") {
+				if (this.context.mathsMode === "compact") {
 					this.buffer += MATHS_MACROS_BINARIES[macro];
 				} else {
 					this.buffer += ' ' + MATHS_MACROS_BINARIES[macro] + ' ';
@@ -469,16 +443,23 @@ var TeXParser = function () {
 					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</span></span>';
 				} else if (macro === "symbf") {
-					this.buffer += '<b class="tex-symbf">';
+					this.buffer += '<b class="tex-bold">';
+					this.buffer += TeXParser.parseString(args[0], this.context);
+					this.buffer += '</b>';
+				} else if (macro === "symup") {
+					this.buffer += '<b class="tex-maths-upright">';
 					this.buffer += TeXParser.parseString(args[0], this.context);
 					this.buffer += '</b>';
 				} else if (macro === "text") {
-					this.buffer += TeXParser.parseString(args[0], this.context);
+					var newContext = Object.create(this.context);
+					newContext.mathsMode = false;
+
+					this.buffer += TeXParser.parseString(args[0], newContext);
 				} else {
 					throw new TeXSyntaxError("Unknown macro " + macro);
 				}
 
-			if (args.length == 0) {
+			if (args.length === 0) {
 				this.accept(" ");
 			}
 
@@ -504,6 +485,7 @@ var TeXParser = function () {
 						var macro = _readMacro4[0];
 						var starred = _readMacro4[1];
 						var args = _readMacro4[2];
+
 
 						if (macro === "left") {
 							var _readDelimited3 = this.readDelimited();
@@ -551,6 +533,7 @@ var TeXParser = function () {
 						var starred = _readMacro6[1];
 						var args = _readMacro6[2];
 
+
 						if (macro === "begin") {
 							buffer += "\\begin{";
 							buffer += args[0];
@@ -579,10 +562,11 @@ var TeXParser = function () {
 		key: "parseEnvironment",
 		value: function parseEnvironment(name) {
 			if (name === "align") {
-				var reader = new StringReader(this.readEnvironment(name));
-
 				var newContext = Object.create(this.context);
 				newContext.mathsMode = "display";
+				newContext.parseEntities = false;
+
+				var reader = new StringReader(this.readEnvironment(name)).mutate(newContext);
 
 				var parser = new TeXParser(reader, newContext);
 
@@ -635,7 +619,7 @@ var TeXParser = function () {
 		value: function estimateMathsHeight(code, context) {
 			var height = 0;
 
-			var reader = new StringReader(code);
+			var reader = new StringReader(code).mutate(context);
 			var parser = new TeXParser(reader, context);
 
 			while (reader.hasNext()) {
@@ -650,8 +634,9 @@ var TeXParser = function () {
 						var starred = _parser$readMacro4[1];
 						var args = _parser$readMacro4[2];
 
+
 						if (macro === "frac") {
-							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], this.context) + TeXParser.estimateMathsHeight(args[1], this.context));
+							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], context) + TeXParser.estimateMathsHeight(args[1], context));
 						} else if (macro === "sqrt") {
 							height = Math.max(height, 1.3);
 						} else if (macro === "overline") {
@@ -670,3 +655,163 @@ var TeXParser = function () {
 
 	return TeXParser;
 }();
+"use strict";
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+//    aTeX - Lightweight TeX-style mathematics in JavaScript
+//    Copyright © 2015-2016  RunasSudo (Yingtong Li)
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Affero General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU Affero General Public License for more details.
+//
+//    You should have received a copy of the GNU Affero General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+var Reader = function () {
+	function Reader() {
+		_classCallCheck(this, Reader);
+	}
+
+	_createClass(Reader, [{
+		key: "mutate",
+		value: function mutate(context) {
+			var reader = this;
+			// Only process entities in maths mode
+			reader = context.mathsMode && context.parseEntities ? reader.toHtmlAware() : reader.notHtmlAware();
+			return reader;
+		}
+	}]);
+
+	return Reader;
+}();
+
+var StringReader = function (_Reader) {
+	_inherits(StringReader, _Reader);
+
+	function StringReader(string) {
+		_classCallCheck(this, StringReader);
+
+		var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(StringReader).call(this));
+
+		_this.string = string;
+		_this.ptr = 0;
+		return _this;
+	}
+
+	_createClass(StringReader, [{
+		key: "getPos",
+		value: function getPos() {
+			return this.ptr;
+		}
+	}, {
+		key: "hasNext",
+		value: function hasNext() {
+			return this.ptr < this.string.length;
+		}
+	}, {
+		key: "peek",
+		value: function peek() {
+			if (!this.hasNext()) {
+				throw new TeXSyntaxError("Unexpected EOF");
+			}
+			return this.string[this.ptr];
+		}
+	}, {
+		key: "next",
+		value: function next() {
+			var result = this.peek();
+			this.ptr++;
+			return result;
+		}
+	}, {
+		key: "toHtmlAware",
+		value: function toHtmlAware() {
+			var reader = new HTMLAwareStringReader(this.string);
+			reader.ptr = this.ptr;
+			return reader;
+		}
+	}, {
+		key: "notHtmlAware",
+		value: function notHtmlAware() {
+			var reader = new StringReader(this.string);
+			reader.ptr = this.ptr;
+			return reader;
+		}
+	}]);
+
+	return StringReader;
+}(Reader);
+
+var HTMLAwareStringReader = function (_StringReader) {
+	_inherits(HTMLAwareStringReader, _StringReader);
+
+	function HTMLAwareStringReader(string) {
+		_classCallCheck(this, HTMLAwareStringReader);
+
+		return _possibleConstructorReturn(this, Object.getPrototypeOf(HTMLAwareStringReader).call(this, string));
+	}
+
+	_createClass(HTMLAwareStringReader, [{
+		key: "readEntity",
+		value: function readEntity() {
+			var out = "";
+			var entity = "";
+			var ptr = this.ptr;
+			while (ptr < this.string.length && (out = this.string[ptr++]) != ";") {
+				entity += out;
+			}
+			return entity + ";";
+		}
+	}, {
+		key: "peek",
+		value: function peek() {
+			if (!this.hasNext()) {
+				throw new TeXSyntaxError("Unexpected EOF");
+			}
+			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
+				var tmp = document.createElement("div");
+				tmp.innerHTML = this.readEntity();
+				return tmp.textContent;
+			} else {
+				return _get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this);
+			}
+		}
+	}, {
+		key: "next",
+		value: function next() {
+			if (!this.hasNext()) {
+				throw new TeXSyntaxError("Unexpected EOF");
+			}
+			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
+				var entity = this.readEntity();
+				this.ptr += entity.length;
+
+				var tmp = document.createElement("div");
+				tmp.innerHTML = entity;
+				return tmp.textContent;
+			}
+
+			var result = this.peek();
+			this.ptr++;
+			return result;
+		}
+	}]);
+
+	return HTMLAwareStringReader;
+}(StringReader);

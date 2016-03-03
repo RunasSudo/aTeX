@@ -119,3 +119,7 @@
 .tex-subsup span.sub {
 	top: 0.3em;
 }
+
+.tex-bold {
+	font-weight: bold;
+}
