@@ -466,10 +466,11 @@ class TeXParser {
 	
 	parseEnvironment(name) {
 		if (name === "align") {
-			let reader = new StringReader(this.readEnvironment(name)).mutate(this.context);
-			
 			let newContext = Object.create(this.context);
 			newContext.mathsMode = "display";
+			newContext.parseEntities = false; // We have already processed any entities.
+			
+			let reader = new StringReader(this.readEnvironment(name)).mutate(newContext);
 			
 			let parser = new TeXParser(reader, newContext);
 			

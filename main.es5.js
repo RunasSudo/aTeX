@@ -562,10 +562,11 @@ var TeXParser = function () {
 		key: "parseEnvironment",
 		value: function parseEnvironment(name) {
 			if (name === "align") {
-				var reader = new StringReader(this.readEnvironment(name)).mutate(this.context);
-
 				var newContext = Object.create(this.context);
 				newContext.mathsMode = "display";
+				newContext.parseEntities = false;
+
+				var reader = new StringReader(this.readEnvironment(name)).mutate(newContext);
 
 				var parser = new TeXParser(reader, newContext);
 
@@ -632,6 +633,7 @@ var TeXParser = function () {
 						var macro = _parser$readMacro4[0];
 						var starred = _parser$readMacro4[1];
 						var args = _parser$readMacro4[2];
+
 
 						if (macro === "frac") {
 							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], context) + TeXParser.estimateMathsHeight(args[1], context));
@@ -771,7 +773,7 @@ var HTMLAwareStringReader = function (_StringReader) {
 			var out = "";
 			var entity = "";
 			var ptr = this.ptr;
-			while (this.hasNext() && (out = this.string[ptr++]) != ";") {
+			while (ptr < this.string.length && (out = this.string[ptr++]) != ";") {
 				entity += out;
 			}
 			return entity + ";";

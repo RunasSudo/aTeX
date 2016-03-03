@@ -72,7 +72,7 @@ class HTMLAwareStringReader extends StringReader {
 		let out = "";
 		let entity = "";
 		let ptr = this.ptr;
-		while (this.hasNext() && (out = this.string[ptr++]) != ";") {
+		while (ptr < this.string.length && (out = this.string[ptr++]) != ";") {
 			entity += out;
 		}
 		return entity + ";";
