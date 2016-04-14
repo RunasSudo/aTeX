@@ -50,7 +50,7 @@ var MATHS_BINARIES = "+×÷=≈><≥≤";
 var MATHS_ACTIVES = "\\^\\- _\\*'";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
-var MATHS_MACROS = {
+var MATHS_MACROS_SYMB = {
 	cos: 'cos ',
 	leftarrow: ' ↑ ',
 	rightarrow: ' ⟶ ',
@@ -176,7 +176,7 @@ var TeXParser = function () {
 	}, {
 		key: "parseText",
 		value: function parseText() {
-			var out = undefined;
+			var out = void 0;
 			if (out = this.accept(/[^\$\\]/)) {
 				this.buffer += out;
 				return true;
@@ -234,7 +234,7 @@ var TeXParser = function () {
 	}, {
 		key: "parseMathsSymbol",
 		value: function parseMathsSymbol() {
-			var out = undefined;
+			var out = void 0;
 			if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
 				this.buffer += out;
 			} else if (out = this.accept(RegExp("[" + MATHS_BINARIES + "]"))) {
@@ -310,21 +310,6 @@ var TeXParser = function () {
 
 			throw new TeXSyntaxError("Expecting }, got EOF");
 		}
-
-		// Read macro call data, excluding initial backslash
-
-	}, {
-		key: "readMacro",
-		value: function readMacro() {
-			var macro = this.readString(/[a-zA-Z]/);
-			var starred = this.accept("*");
-			var args = [];
-			while (this.reader.peek() === "{") {
-				args.push(this.readGroup());
-			}
-
-			return [macro, starred, args];
-		}
 	}, {
 		key: "unreadMacro",
 		value: function unreadMacro(macro, starred, args) {
@@ -364,23 +349,33 @@ var TeXParser = function () {
 				return false;
 			}
 
-			var _readMacro = this.readMacro();
+			var macro = this.readString(/[a-zA-Z]/);
+			return this.handleMacro(macro);
+		}
+	}, {
+		key: "readMacroArgs",
+		value: function readMacroArgs(num) {
+			var args = [];
+			for (var i = 0; i < num; i++) {
+				while (this.accept(" ")) {} // Gobble whitespace.
 
-			var _readMacro2 = _slicedToArray(_readMacro, 3);
-
-			var macro = _readMacro2[0];
-			var starred = _readMacro2[1];
-			var args = _readMacro2[2];
-
-			return this.handleMacro(macro, starred, args);
+				if (this.reader.peek() == "{") {
+					args.push(this.readGroup());
+				} else {
+					args.push(this.reader.next());
+				}
+			}
+			return args;
 		}
 	}, {
 		key: "handleMacro",
-		value: function handleMacro(macro, starred, args) {
+		value: function handleMacro(macro) {
+			while (this.accept(" ")) {} // Gobble whitespace.
+
 			// WARNING: The whitespace that follows is misleading!
 
-			if (MATHS_MACROS[macro]) {
-				this.buffer += MATHS_MACROS[macro];
+			if (MATHS_MACROS_SYMB[macro]) {
+				this.buffer += MATHS_MACROS_SYMB[macro];
 			} else if (MATHS_MACROS_BINARIES[macro]) {
 				if (this.context.mathsMode === "compact") {
 					this.buffer += MATHS_MACROS_BINARIES[macro];
@@ -388,18 +383,20 @@ var TeXParser = function () {
 					this.buffer += ' ' + MATHS_MACROS_BINARIES[macro] + ' ';
 				}
 			} else if (macro === "begin") {
-				this.parseEnvironment(args[0]);
+				this.parseEnvironment(this.readMacroArgs(1)[0]);
 			} else if (macro === "end") {
-				throw new TeXSyntaxError("Unexpected \\end{" + args[0] + "}");
+				throw new TeXSyntaxError("Unexpected \\end{" + this.readMacroArgs(1)[0] + "}");
 			} else if (macro === "ce") {
 				this.buffer += '<span class="tex-maths-upright">';
 
 				var newContext = Object.create(this.context);
 				newContext.mathsMode = "ce";
 
-				this.buffer += TeXParser.parseString(args[0], newContext);
+				this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], newContext);
 				this.buffer += '</span>';
 			} else if (macro === "frac") {
+				var args = this.readMacroArgs(2);
+
 				this.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
 				this.buffer += TeXParser.parseString(args[0], this.context);
 
@@ -431,37 +428,33 @@ var TeXParser = function () {
 						this.buffer += ' ';
 					}
 				} else if (macro === "mathcal") {
-					if (args[0] === "E") {
+					if (this.readMacroArgs(1)[0] === "E") {
 						this.buffer += 'ℰ';
 					}
 				} else if (macro === "overline") {
 					this.buffer += '<span class="tex-overline">';
-					this.buffer += TeXParser.parseString(args[0], this.context);
+					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
 					this.buffer += '</span>';
 				} else if (macro === "sqrt") {
 					this.buffer += '<span class="tex-sqrt"><span>';
-					this.buffer += TeXParser.parseString(args[0], this.context);
+					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
 					this.buffer += '</span></span>';
 				} else if (macro === "symbf") {
 					this.buffer += '<b class="tex-bold">';
-					this.buffer += TeXParser.parseString(args[0], this.context);
+					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
 					this.buffer += '</b>';
 				} else if (macro === "symup") {
 					this.buffer += '<b class="tex-maths-upright">';
-					this.buffer += TeXParser.parseString(args[0], this.context);
+					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
 					this.buffer += '</b>';
 				} else if (macro === "text") {
 					var newContext = Object.create(this.context);
 					newContext.mathsMode = false;
 
-					this.buffer += TeXParser.parseString(args[0], newContext);
+					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], newContext);
 				} else {
 					throw new TeXSyntaxError("Unknown macro " + macro);
 				}
-
-			if (args.length === 0) {
-				this.accept(" ");
-			}
 
 			return true;
 		}
@@ -478,14 +471,7 @@ var TeXParser = function () {
 			while (this.reader.hasNext()) {
 				if (this.accept("\\")) {
 					if (this.reader.peek().match(/[a-zA-Z]/)) {
-						var _readMacro3 = this.readMacro();
-
-						var _readMacro4 = _slicedToArray(_readMacro3, 3);
-
-						var macro = _readMacro4[0];
-						var starred = _readMacro4[1];
-						var args = _readMacro4[2];
-
+						var macro = this.readString(/[a-zA-Z]/);
 
 						if (macro === "left") {
 							var _readDelimited3 = this.readDelimited();
@@ -501,7 +487,7 @@ var TeXParser = function () {
 							var right = this.reader.next();
 							return [buffer, left, right];
 						} else {
-							buffer += this.unreadMacro(macro, starred, args);
+							buffer += "\\" + macro;
 						}
 					} else {
 						buffer += "\\";
@@ -525,28 +511,25 @@ var TeXParser = function () {
 			while (this.reader.hasNext()) {
 				if (this.accept("\\")) {
 					if (this.reader.peek().match(/[a-zA-Z]/)) {
-						var _readMacro5 = this.readMacro();
-
-						var _readMacro6 = _slicedToArray(_readMacro5, 3);
-
-						var macro = _readMacro6[0];
-						var starred = _readMacro6[1];
-						var args = _readMacro6[2];
-
+						var macro = this.readString(/[a-zA-Z]/);
 
 						if (macro === "begin") {
+							var args = this.readMacroArgs(1);
+
 							buffer += "\\begin{";
 							buffer += args[0];
 							buffer += "}";
 							buffer += this.readEnvironment(args[0]);
 							buffer += "\\end{" + args[0] + "}";
 						} else if (macro === "end") {
+							var args = this.readMacroArgs(1);
+
 							if (args[0] !== name) {
 								throw new TeXSyntaxError("Expecting \\end{" + name + "}, got \\end{" + args[0] + "}");
 							}
 							return buffer;
 						} else {
-							buffer += this.unreadMacro(macro, starred, args);
+							buffer += "\\" + macro;
 						}
 					} else {
 						buffer += "\\";
@@ -564,7 +547,7 @@ var TeXParser = function () {
 			if (name === "align") {
 				var newContext = Object.create(this.context);
 				newContext.mathsMode = "display";
-				newContext.parseEntities = false;
+				newContext.parseEntities = false; // We have already processed any entities.
 
 				var reader = new StringReader(this.readEnvironment(name)).mutate(newContext);
 
@@ -582,16 +565,8 @@ var TeXParser = function () {
 					} else if (parser.accept("\\")) {
 							if (reader.peek().match(/[a-zA-Z]/)) {
 								// A macro
-
-								var _parser$readMacro = parser.readMacro();
-
-								var _parser$readMacro2 = _slicedToArray(_parser$readMacro, 3);
-
-								var macro = _parser$readMacro2[0];
-								var starred = _parser$readMacro2[1];
-								var args = _parser$readMacro2[2];
-
-								parser.handleMacro(macro, starred, args);
+								var macro = parser.readString(/[a-zA-Z]/);
+								parser.handleMacro(macro);
 								this.buffer += parser.buffer;
 							} else if (parser.accept("\\")) {
 								// A newline
@@ -626,16 +601,10 @@ var TeXParser = function () {
 				// Recurse through macros
 				if (parser.accept("\\")) {
 					if (reader.peek().match(/[a-zA-Z]/)) {
-						var _parser$readMacro3 = parser.readMacro();
-
-						var _parser$readMacro4 = _slicedToArray(_parser$readMacro3, 3);
-
-						var macro = _parser$readMacro4[0];
-						var starred = _parser$readMacro4[1];
-						var args = _parser$readMacro4[2];
-
+						var macro = parser.readString(/[a-zA-Z]/);
 
 						if (macro === "frac") {
+							var args = parser.readMacroArgs(2);
 							height = Math.max(height, TeXParser.estimateMathsHeight(args[0], context) + TeXParser.estimateMathsHeight(args[1], context));
 						} else if (macro === "sqrt") {
 							height = Math.max(height, 1.3);
