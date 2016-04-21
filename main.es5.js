@@ -46,8 +46,8 @@ var TeXSyntaxError = function (_Error) {
 
 
 var MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
-var MATHS_BINARIES = "+×÷=≈><≥≤";
-var MATHS_ACTIVES = "\\^\\- _\\*'";
+var MATHS_BINARIES = "+×÷≈><≥≤";
+var MATHS_ACTIVES = "\\^\\-=~ _\\*'";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS_SYMB = {
@@ -57,6 +57,8 @@ var MATHS_MACROS_SYMB = {
 	downarrow: ' ↓ ',
 	leftarrow: ' ← ',
 	'in': '∈',
+	parallel: '∥',
+	perp: '⟂',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
@@ -244,8 +246,12 @@ var TeXParser = function () {
 					this.buffer += ' ' + out + ' ';
 				}
 			} else if (this.accept(" ")) {} else if (this.accept("-")) {
-				if (this.context.mathsMode === "ce" && this.accept(">")) {
-					this.buffer += ' ⟶ '; // It's actually an arrow in disguise
+				if (this.context.mathsMode === "ce") {
+					if (this.accept(">")) {
+						this.buffer += ' ⟶ '; // It's actually an arrow in disguise
+					} else {
+							this.buffer += '–'; // Single bond
+						}
 				} else {
 						if (this.buffer.endsWith(" ")) {
 							// Last input was probably an operator
@@ -254,7 +260,19 @@ var TeXParser = function () {
 								this.buffer += ' − '; // Binary minus
 							}
 					}
-			} else if (this.accept("*")) {
+			} else if (this.accept("=")) {
+					if (this.context.mathsMode === "ce") {
+						this.buffer += '='; // Double bond
+					} else {
+							this.buffer += ' = ';
+						}
+				} else if (this.accept("~")) {
+					if (this.context.mathsMode === "ce") {
+						this.buffer += '≡'; // Triple bond
+					} else {
+							this.buffer += '~';
+						}
+				} else if (this.accept("*")) {
 					this.buffer += '∗';
 				} else if (this.accept("'")) {
 					this.buffer += '′';

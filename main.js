@@ -24,8 +24,8 @@ class TeXSyntaxError extends Error {
 
 // why u no class variables, JS?
 let MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
-let MATHS_BINARIES = "+×÷=≈><≥≤";
-let MATHS_ACTIVES = "\\^\\- _\\*'";
+let MATHS_BINARIES = "+×÷≈><≥≤";
+let MATHS_ACTIVES = "\\^\\-=~ _\\*'";
 let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 let MATHS_MACROS_SYMB = {
@@ -35,6 +35,8 @@ let MATHS_MACROS_SYMB = {
 	downarrow: ' ↓ ',
 	leftarrow: ' ← ',
 	'in': '∈',
+	parallel: '∥',
+	perp: '⟂',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
@@ -193,14 +195,30 @@ class TeXParser {
 			}
 		} else if (this.accept(" ")) {
 		} else if (this.accept("-")) {
-			if (this.context.mathsMode === "ce" && this.accept(">")) {
-				this.buffer += ' ⟶ '; // It's actually an arrow in disguise
+			if (this.context.mathsMode === "ce") {
+				if (this.accept(">")) {
+					this.buffer += ' ⟶ '; // It's actually an arrow in disguise
+				} else {
+					this.buffer += '–'; // Single bond
+				}
 			} else {
 				if (this.buffer.endsWith(" ")) { // Last input was probably an operator
 					this.buffer += '−'; // Unary minus
 				} else {
 					this.buffer += ' − '; // Binary minus
 				}
+			}
+		} else if (this.accept("=")) {
+			if (this.context.mathsMode === "ce") {
+				this.buffer += '='; // Double bond
+			} else {
+				this.buffer += ' = ';
+			}
+		} else if (this.accept("~")) {
+			if (this.context.mathsMode === "ce") {
+				this.buffer += '≡'; // Triple bond
+			} else {
+				this.buffer += '~';
 			}
 		} else if (this.accept("*")) {
 			this.buffer += '∗';
