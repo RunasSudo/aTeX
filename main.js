@@ -30,7 +30,7 @@ let MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MA
 
 let MATHS_MACROS_SYMB = {
 	cos: 'cos ',
-	leftarrow: ' ↑ ',
+	uparrow: ' ↑ ',
 	rightarrow: ' ⟶ ',
 	downarrow: ' ↓ ',
 	leftarrow: ' ← ',
