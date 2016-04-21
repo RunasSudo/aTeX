@@ -46,17 +46,19 @@ var TeXSyntaxError = function (_Error) {
 
 
 var MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
-var MATHS_BINARIES = "+×÷=≈><≥≤";
-var MATHS_ACTIVES = "\\^\\- _\\*'";
+var MATHS_BINARIES = "+×÷≈><≥≤";
+var MATHS_ACTIVES = "\\^\\-=~ _\\*'";
 var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
 
 var MATHS_MACROS_SYMB = {
 	cos: 'cos ',
-	leftarrow: ' ↑ ',
+	uparrow: ' ↑ ',
 	rightarrow: ' ⟶ ',
 	downarrow: ' ↓ ',
 	leftarrow: ' ← ',
 	'in': '∈',
+	parallel: '∥',
+	perp: '⟂',
 	sin: 'sin ',
 	sum: '∑',
 	tan: 'tan ',
@@ -244,8 +246,12 @@ var TeXParser = function () {
 					this.buffer += ' ' + out + ' ';
 				}
 			} else if (this.accept(" ")) {} else if (this.accept("-")) {
-				if (this.context.mathsMode === "ce" && this.accept(">")) {
-					this.buffer += ' ⟶ '; // It's actually an arrow in disguise
+				if (this.context.mathsMode === "ce") {
+					if (this.accept(">")) {
+						this.buffer += ' ⟶ '; // It's actually an arrow in disguise
+					} else {
+							this.buffer += '–'; // Single bond
+						}
 				} else {
 						if (this.buffer.endsWith(" ")) {
 							// Last input was probably an operator
@@ -254,7 +260,19 @@ var TeXParser = function () {
 								this.buffer += ' − '; // Binary minus
 							}
 					}
-			} else if (this.accept("*")) {
+			} else if (this.accept("=")) {
+					if (this.context.mathsMode === "ce") {
+						this.buffer += '='; // Double bond
+					} else {
+							this.buffer += ' = ';
+						}
+				} else if (this.accept("~")) {
+					if (this.context.mathsMode === "ce") {
+						this.buffer += '≡'; // Triple bond
+					} else {
+							this.buffer += '~';
+						}
+				} else if (this.accept("*")) {
 					this.buffer += '∗';
 				} else if (this.accept("'")) {
 					this.buffer += '′';
@@ -737,8 +755,8 @@ var HTMLAwareStringReader = function (_StringReader) {
 	}
 
 	_createClass(HTMLAwareStringReader, [{
-		key: "readEntity",
-		value: function readEntity() {
+		key: "peekEntity",
+		value: function peekEntity() {
 			var out = "";
 			var entity = "";
 			var ptr = this.ptr;
@@ -754,9 +772,15 @@ var HTMLAwareStringReader = function (_StringReader) {
 				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
-				var tmp = document.createElement("div");
-				tmp.innerHTML = this.readEntity();
-				return tmp.textContent;
+				var entity = this.peekEntity();
+
+				if (entity === "&nbsp;") {
+					return " ";
+				} else {
+					var tmp = document.createElement("div");
+					tmp.innerHTML = this.peekEntity();
+					return tmp.textContent;
+				}
 			} else {
 				return _get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this);
 			}
@@ -768,12 +792,16 @@ var HTMLAwareStringReader = function (_StringReader) {
 				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
-				var entity = this.readEntity();
+				var entity = this.peekEntity();
 				this.ptr += entity.length;
 
-				var tmp = document.createElement("div");
-				tmp.innerHTML = entity;
-				return tmp.textContent;
+				if (entity === "&nbsp;") {
+					return " ";
+				} else {
+					var tmp = document.createElement("div");
+					tmp.innerHTML = entity;
+					return tmp.textContent;
+				}
 			}
 
 			var result = this.peek();
