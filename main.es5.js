@@ -737,8 +737,8 @@ var HTMLAwareStringReader = function (_StringReader) {
 	}
 
 	_createClass(HTMLAwareStringReader, [{
-		key: "readEntity",
-		value: function readEntity() {
+		key: "peekEntity",
+		value: function peekEntity() {
 			var out = "";
 			var entity = "";
 			var ptr = this.ptr;
@@ -754,9 +754,15 @@ var HTMLAwareStringReader = function (_StringReader) {
 				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
-				var tmp = document.createElement("div");
-				tmp.innerHTML = this.readEntity();
-				return tmp.textContent;
+				var entity = this.peekEntity();
+
+				if (entity === "&nbsp;") {
+					return " ";
+				} else {
+					var tmp = document.createElement("div");
+					tmp.innerHTML = this.peekEntity();
+					return tmp.textContent;
+				}
 			} else {
 				return _get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this);
 			}
@@ -768,12 +774,16 @@ var HTMLAwareStringReader = function (_StringReader) {
 				throw new TeXSyntaxError("Unexpected EOF");
 			}
 			if (_get(Object.getPrototypeOf(HTMLAwareStringReader.prototype), "peek", this).call(this) === "&") {
-				var entity = this.readEntity();
+				var entity = this.peekEntity();
 				this.ptr += entity.length;
 
-				var tmp = document.createElement("div");
-				tmp.innerHTML = entity;
-				return tmp.textContent;
+				if (entity === "&nbsp;") {
+					return " ";
+				} else {
+					var tmp = document.createElement("div");
+					tmp.innerHTML = entity;
+					return tmp.textContent;
+				}
 			}
 
 			var result = this.peek();

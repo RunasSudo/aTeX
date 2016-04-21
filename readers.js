@@ -68,7 +68,7 @@ class HTMLAwareStringReader extends StringReader {
 		super(string);
 	}
 	
-	readEntity() {
+	peekEntity() {
 		let out = "";
 		let entity = "";
 		let ptr = this.ptr;
@@ -83,9 +83,15 @@ class HTMLAwareStringReader extends StringReader {
 			throw new TeXSyntaxError("Unexpected EOF");
 		}
 		if (super.peek() === "&") {
-			let tmp = document.createElement("div");
-			tmp.innerHTML = this.readEntity();
-			return tmp.textContent;
+			let entity = this.peekEntity();
+			
+			if (entity === "&nbsp;") {
+				return " ";
+			} else {
+				let tmp = document.createElement("div");
+				tmp.innerHTML = this.peekEntity();
+				return tmp.textContent;
+			}
 		} else {
 			return super.peek();
 		}
@@ -96,12 +102,16 @@ class HTMLAwareStringReader extends StringReader {
 			throw new TeXSyntaxError("Unexpected EOF");
 		}
 		if (super.peek() === "&") {
-			let entity = this.readEntity();
+			let entity = this.peekEntity();
 			this.ptr += entity.length;
 			
-			let tmp = document.createElement("div");
-			tmp.innerHTML = entity;
-			return tmp.textContent;
+			if (entity === "&nbsp;") {
+				return " ";
+			} else {
+				let tmp = document.createElement("div");
+				tmp.innerHTML = entity;
+				return tmp.textContent;
+			}
 		}
 		
 		let result = this.peek();
