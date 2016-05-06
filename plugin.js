@@ -36,7 +36,9 @@ class PluginBasic extends Plugin {
 		this.parser.context.arch.MATHS_ACTIVES["*"] = PluginBasic.textMacro('∗');
 		this.parser.context.arch.MATHS_ACTIVES["'"] = PluginBasic.textMacro('′');
 		this.parser.context.arch.MATHS_MACROS["approx"] = PluginBasic.binaryMacro('≈');
-		this.parser.context.arch.MATHS_MACROS["cos"] = PluginBasic.textMacro('cos ');
+		this.parser.context.arch.MATHS_MACROS["cos"] = PluginBasic.opMacro('cos');
+		this.parser.context.arch.MATHS_MACROS["cot"] = PluginBasic.opMacro('cot');
+		this.parser.context.arch.MATHS_MACROS["csc"] = PluginBasic.opMacro('csc');
 		this.parser.context.arch.MATHS_MACROS["uparrow"] = PluginBasic.textMacro(' ↑ ');
 		this.parser.context.arch.MATHS_MACROS["downarrow"] = PluginBasic.textMacro(' ↓ ');
 		this.parser.context.arch.MATHS_MACROS["leftarrow"] = PluginBasic.textMacro(' ← ');
@@ -45,8 +47,9 @@ class PluginBasic extends Plugin {
 		this.parser.context.arch.MATHS_MACROS["parallel"] = PluginBasic.textMacro('∥');
 		this.parser.context.arch.MATHS_MACROS["perp"] = PluginBasic.textMacro('⟂');
 		this.parser.context.arch.MATHS_MACROS["propto"] = PluginBasic.binaryMacro('∝');
-		this.parser.context.arch.MATHS_MACROS["sin"] = PluginBasic.textMacro('sin ');
-		this.parser.context.arch.MATHS_MACROS["tan"] = PluginBasic.textMacro('tan ');
+		this.parser.context.arch.MATHS_MACROS["sec"] = PluginBasic.opMacro('sec');
+		this.parser.context.arch.MATHS_MACROS["sin"] = PluginBasic.opMacro('sin');
+		this.parser.context.arch.MATHS_MACROS["tan"] = PluginBasic.opMacro('tan');
 		this.parser.context.arch.MATHS_MACROS["therefore"] = PluginBasic.textMacro('∴ ');
 		this.parser.context.arch.MATHS_MACROS["times"] = PluginBasic.binaryMacro('×');
 		this.parser.context.arch.MATHS_MACROS["to"] = PluginBasic.binaryMacro('→');
@@ -107,17 +110,10 @@ class PluginBasic extends Plugin {
 			throw new TeXSyntaxError("Unexpected \\right" + this.reader.next());
 		}
 		
-		this.parser.context.arch.MATHS_MACROS["log"] = function(parser, macro) {
-			parser.buffer += "log";
-			if (parser.reader.peek() !== "_") {
-				parser.buffer += ' ';
-			}
-		}
-		this.parser.context.arch.MATHS_MACROS["ln"] = function(parser, macro) {
-			parser.buffer += macro;
-		}
-		this.parser.context.arch.MATHS_MACROS["lg"] = this.parser.context.arch.MATHS_MACROS["ln"];
-		this.parser.context.arch.MATHS_MACROS["lb"] = this.parser.context.arch.MATHS_MACROS["ln"];
+		this.parser.context.arch.MATHS_MACROS["log"] = PluginBasic.opMacro('log');
+		this.parser.context.arch.MATHS_MACROS["ln"] = PluginBasic.opMacro('ln');
+		this.parser.context.arch.MATHS_MACROS["lg"] = PluginBasic.opMacro('lg');
+		this.parser.context.arch.MATHS_MACROS["lb"] = PluginBasic.opMacro('lb');
 		
 		this.parser.context.arch.MATHS_MACROS["mathcal"] = function(parser, macro) {
 			if (parser.readMacroArgs(1)[0] === "E") {
@@ -257,7 +253,6 @@ class PluginBasic extends Plugin {
 			parser.buffer += text;
 		}
 	}
-	
 	static binaryMacro(text) {
 		return function(parser, x = false) {
 			if (parser.context.mathsMode === "compact") {
@@ -267,6 +262,15 @@ class PluginBasic extends Plugin {
 			}
 		}
 	}
+	static opMacro(text) {
+		return function(parser, x = false) {
+			parser.buffer += text;
+			if (parser.reader.peek() !== "_" && parser.reader.peek() !== "^") {
+				parser.buffer += ' ';
+			}
+		}
+	}
+	
 }
 
 class PluginChemistry extends Plugin {
