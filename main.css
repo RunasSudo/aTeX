@@ -120,6 +120,28 @@
 	top: 0.3em;
 }
 
+.tex-limit {
+	display: inline-block;
+	height: 1em;
+}
+.tex-limit > span {
+	display: block;
+	position: relative;
+	height: 0;
+	text-align: center;
+}
+.tex-limit > span.tex-limit-mid {
+	top: -0.3em;
+}
+.tex-limit > span.tex-limit-top {
+	top: -1.4em;
+	font-size: 0.7em;
+}
+.tex-limit > span.tex-limit-bot {
+	top: 0.9em;
+	font-size: 0.7em;
+}
+
 .tex-bold {
 	font-weight: bold;
 }
