@@ -46,10 +46,10 @@ class PluginBasic extends Plugin {
 		this.parser.context.arch.MATHS_MACROS["perp"] = PluginBasic.textMacro('⟂');
 		this.parser.context.arch.MATHS_MACROS["propto"] = PluginBasic.binaryMacro('∝');
 		this.parser.context.arch.MATHS_MACROS["sin"] = PluginBasic.textMacro('sin ');
-		this.parser.context.arch.MATHS_MACROS["sum"] = PluginBasic.textMacro('∑');
 		this.parser.context.arch.MATHS_MACROS["tan"] = PluginBasic.textMacro('tan ');
 		this.parser.context.arch.MATHS_MACROS["therefore"] = PluginBasic.textMacro('∴ ');
 		this.parser.context.arch.MATHS_MACROS["times"] = PluginBasic.binaryMacro('×');
+		this.parser.context.arch.MATHS_MACROS["to"] = PluginBasic.binaryMacro('→');
 		
 		this.parser.context.arch.MATHS_ACTIVES["-"] = function(parser, char) {
 			if (parser.buffer.endsWith(" ")) { // Last input was probably an operator
@@ -145,6 +145,31 @@ class PluginBasic extends Plugin {
 			parser.buffer += '<span class="tex-maths-upright">';
 			parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], parser.context);
 			parser.buffer += '</span>';
+		}
+		
+		this.parser.context.arch.MATHS_MACROS["sum"] = function(parser, macro) {
+			parser.buffer += '<span class="tex-limit"><span class="tex-limit-mid" style="font-size: 1.5em; top: -0.4em;">∑</span class="tex-limit-mid">';
+			
+			let out;
+			while (out = parser.accept(/[_\^]/)) {
+				parser.buffer += '<span class="tex-limit-' + (out === "_" ? 'bot' : 'top') + '" style="top: ' + (out === "_" ? '1.4' : '-1.6') + 'em;">';
+				parser.parseMathsSymbol();
+				parser.buffer += '</span>';
+			}
+			
+			parser.buffer += '</span>';
+		}
+		this.parser.context.arch.MATHS_MACROS["lim"] = function(parser, macro) {
+			parser.buffer += '<span class="tex-limit"><span class="tex-limit-mid">lim</span class="tex-limit-mid">';
+			
+			let out;
+			while (out = parser.accept(/[_\^]/)) {
+				parser.buffer += '<span class="tex-limit-' + (out === "_" ? 'bot' : 'top') + '">';
+				parser.parseMathsSymbol();
+				parser.buffer += '</span>';
+			}
+			
+			parser.buffer += '</span> ';
 		}
 		
 		this.parser.context.arch.MATHS_MACROS["text"] = function(parser, macro) {
