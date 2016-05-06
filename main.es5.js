@@ -1,7 +1,5 @@
 "use strict";
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -42,35 +40,6 @@ var TeXSyntaxError = function (_Error) {
 	return TeXSyntaxError;
 }(Error);
 
-// why u no class variables, JS?
-
-
-var MATHS_UPRIGHTS = "0-9%\\(\\)\\[\\]\\?Δ∞↑→↓←";
-var MATHS_BINARIES = "+×÷≈><≥≤";
-var MATHS_ACTIVES = "\\^\\-=~ _\\*'";
-var MATHS_VARIABLES = "^#\\$&\\{\\}~\\\\" + MATHS_UPRIGHTS + MATHS_BINARIES + MATHS_ACTIVES;
-
-var MATHS_MACROS_SYMB = {
-	cos: 'cos ',
-	uparrow: ' ↑ ',
-	rightarrow: ' ⟶ ',
-	downarrow: ' ↓ ',
-	leftarrow: ' ← ',
-	'in': '∈',
-	parallel: '∥',
-	perp: '⟂',
-	sin: 'sin ',
-	sum: '∑',
-	tan: 'tan ',
-	therefore: '∴ ',
-	uDelta: 'Δ'
-};
-var MATHS_MACROS_BINARIES = {
-	approx: '≈',
-	propto: '∝',
-	times: '×'
-};
-
 var TeXParser = function () {
 	_createClass(TeXParser, null, [{
 		key: "parseString",
@@ -97,6 +66,12 @@ var TeXParser = function () {
 		this.context.mathsMode = "mathsMode" in this.context ? this.context.mathsMode : false;
 		this.context.mathsDisplayMode = "mathsDisplayMode" in this.context ? this.context.mathsDisplayMode : false;
 		this.context.parseEntities = "parseEntities" in this.context ? this.context.parseEntities : false;
+		this.context.arch = "arch" in this.context ? this.context.arch : {
+			MATHS_UPRIGHTS: "",
+			MATHS_ACTIVES: {},
+			MATHS_MACROS: {},
+			MATHS_ENVIRONMENTS: {}
+		};
 	}
 
 	_createClass(TeXParser, [{
@@ -112,6 +87,7 @@ var TeXParser = function () {
 				this.buffer += '<span class="tex-error">' + ex.name + ': ' + ex.message + ' near ' + this.reader.getPos() + '</span>';
 				console.log(ex.name + ": " + ex.message);
 				console.log(ex.stack);
+				console.log(this);
 			}
 			return this.buffer;
 		}
@@ -129,14 +105,15 @@ var TeXParser = function () {
 				this.buffer += '<span class="tex-error">' + ex.name + ': ' + ex.message + ' near ' + this.reader.getPos() + '</span>';
 				console.log(ex.name + ": " + ex.message);
 				console.log(ex.stack);
+				console.log(this);
 			}
 			return this.buffer;
 		}
-
-		// Swallow and return next character if matches regex, otherwise return false.
-
 	}, {
 		key: "accept",
+
+
+		// Swallow and return next character if matches regex, otherwise return false.
 		value: function accept(regex) {
 			var strict = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
 
@@ -237,68 +214,17 @@ var TeXParser = function () {
 		key: "parseMathsSymbol",
 		value: function parseMathsSymbol() {
 			var out = void 0;
-			if (out = this.accept(RegExp("[" + MATHS_UPRIGHTS + "]"))) {
+			if (out = this.accept(TeXParser.toRegex(this.context.arch.MATHS_UPRIGHTS))) {
 				this.buffer += out;
-			} else if (out = this.accept(RegExp("[" + MATHS_BINARIES + "]"))) {
-				if (this.context.mathsMode === "compact") {
-					this.buffer += out;
-				} else {
-					this.buffer += ' ' + out + ' ';
-				}
-			} else if (this.accept(" ")) {} else if (this.accept("-")) {
-				if (this.context.mathsMode === "ce") {
-					if (this.accept(">")) {
-						this.buffer += ' ⟶ '; // It's actually an arrow in disguise
-					} else {
-							this.buffer += '–'; // Single bond
-						}
-				} else {
-						if (this.buffer.endsWith(" ")) {
-							// Last input was probably an operator
-							this.buffer += '−'; // Unary minus
-						} else {
-								this.buffer += ' − '; // Binary minus
-							}
-					}
-			} else if (this.accept("=")) {
-					if (this.context.mathsMode === "ce") {
-						this.buffer += '='; // Double bond
-					} else {
-							this.buffer += ' = ';
-						}
-				} else if (this.accept("~")) {
-					if (this.context.mathsMode === "ce") {
-						this.buffer += '≡'; // Triple bond
-					} else {
-							this.buffer += '~';
-						}
-				} else if (this.accept("*")) {
-					this.buffer += '∗';
-				} else if (this.accept("'")) {
-					this.buffer += '′';
-				} else if (out = this.accept(/[_\^]/)) {
-					var newContext = Object.create(this.context);
-					if (this.context.mathsMode === "ce") newContext.mathsMode = "compact";
-					var parser = new TeXParser(this.reader, newContext);
-
-					this.buffer += '<span class="tex-subsup">';
-					do {
-						this.buffer += '<span class="' + (out === "_" ? 'sub' : 'sup') + '">';
-
-						parser.buffer = "";
-						parser.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
-						this.buffer += parser.buffer;
-
-						this.buffer += '</span>';
-					} while (out = this.accept(/[_\^]/)); // Too much recursion. Time for loops!
-					this.buffer += '</span>';
-				} else if (this.reader.peek() === "{") {
-					this.buffer += TeXParser.parseString(this.readGroup(), this.context);
-				} else if (this.parseMacro()) {} else if (out = this.accept(RegExp("[" + MATHS_VARIABLES + "]"))) {
-					this.buffer += '<i class="tex-variable">' + out + '</i>';
-				} else {
-					throw new TeXSyntaxError("Unexpected " + this.reader.peek());
-				}
+			} else if (this.accept(" ")) {} else if (out = this.accept(TeXParser.toRegex(Object.keys(this.context.arch.MATHS_ACTIVES).join("")))) {
+				this.context.arch.MATHS_ACTIVES[out](this, out);
+			} else if (this.reader.peek() === "{") {
+				this.buffer += TeXParser.parseString(this.readGroup(), this.context);
+			} else if (this.parseMacro()) {} else if (out = this.accept(TeXParser.toRegex("#\\$&\\{\\}~\\\\" + this.context.arch.MATHS_UPRIGHTS + Object.keys(this.context.arch.MATHS_ACTIVES).join(""), true))) {
+				this.buffer += '<i class="tex-variable">' + out + '</i>';
+			} else {
+				throw new TeXSyntaxError("Unexpected " + this.reader.peek());
+			}
 			return true;
 		}
 
@@ -388,134 +314,24 @@ var TeXParser = function () {
 	}, {
 		key: "handleMacro",
 		value: function handleMacro(macro) {
-			while (this.accept(" ")) {} // Gobble whitespace.
+			//while (this.accept(" ")); // Gobble whitespace.
 
-			// WARNING: The whitespace that follows is misleading!
-
-			if (MATHS_MACROS_SYMB[macro]) {
-				this.buffer += MATHS_MACROS_SYMB[macro];
-			} else if (MATHS_MACROS_BINARIES[macro]) {
-				if (this.context.mathsMode === "compact") {
-					this.buffer += MATHS_MACROS_BINARIES[macro];
-				} else {
-					this.buffer += ' ' + MATHS_MACROS_BINARIES[macro] + ' ';
-				}
+			if (this.context.arch.MATHS_MACROS[macro]) {
+				this.context.arch.MATHS_MACROS[macro](this, macro);
 			} else if (macro === "begin") {
-				this.parseEnvironment(this.readMacroArgs(1)[0]);
+				var env = this.readMacroArgs(1)[0];
+				if (this.context.arch.MATHS_ENVIRONMENTS[env]) {
+					this.context.arch.MATHS_ENVIRONMENTS[env](this, env);
+				} else {
+					throw new TeXSyntaxError("Unknown environment " + name);
+				}
 			} else if (macro === "end") {
 				throw new TeXSyntaxError("Unexpected \\end{" + this.readMacroArgs(1)[0] + "}");
-			} else if (macro === "ce") {
-				this.buffer += '<span class="tex-maths-upright">';
-
-				var newContext = Object.create(this.context);
-				newContext.mathsMode = "ce";
-
-				this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], newContext);
-				this.buffer += '</span>';
-			} else if (macro === "frac") {
-				var args = this.readMacroArgs(2);
-
-				this.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
-				this.buffer += TeXParser.parseString(args[0], this.context);
-
-				var denHeight = TeXParser.estimateMathsHeight(args[1], this.context);
-				this.buffer += '</span><span class="tex-frac-bar"></span><span class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
-
-				this.buffer += TeXParser.parseString(args[1], this.context);
-				this.buffer += '</span></span>';
-			} else if (macro === "left") {
-				var _readDelimited = this.readDelimited();
-
-				var _readDelimited2 = _slicedToArray(_readDelimited, 3);
-
-				var content = _readDelimited2[0];
-				var left = _readDelimited2[1];
-				var right = _readDelimited2[2];
-
-				var contentHeight = TeXParser.estimateMathsHeight(content, this.context);
-				var transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
-				this.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
-				this.buffer += TeXParser.parseString(content, this.context);
-				this.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
-				// Anki's QtWebView doesn't support unprefixed CSS transforms :(
-			} else if (macro === "right") {
-					throw new TeXSyntaxError("Unexpected \\right" + this.reader.next());
-				} else if (macro === "log" || macro === "ln" || macro === "lg" || macro === "lb") {
-					this.buffer += macro;
-					if (this.reader.peek() !== "_") {
-						this.buffer += ' ';
-					}
-				} else if (macro === "mathcal") {
-					if (this.readMacroArgs(1)[0] === "E") {
-						this.buffer += 'ℰ';
-					}
-				} else if (macro === "overline") {
-					this.buffer += '<span class="tex-overline">';
-					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
-					this.buffer += '</span>';
-				} else if (macro === "sqrt") {
-					this.buffer += '<span class="tex-sqrt"><span>';
-					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
-					this.buffer += '</span></span>';
-				} else if (macro === "symbf") {
-					this.buffer += '<b class="tex-bold">';
-					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
-					this.buffer += '</b>';
-				} else if (macro === "symup") {
-					this.buffer += '<b class="tex-maths-upright">';
-					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], this.context);
-					this.buffer += '</b>';
-				} else if (macro === "text") {
-					var newContext = Object.create(this.context);
-					newContext.mathsMode = false;
-
-					this.buffer += TeXParser.parseString(this.readMacroArgs(1)[0], newContext);
-				} else {
-					throw new TeXSyntaxError("Unknown macro " + macro);
-				}
-
-			return true;
-		}
-
-		// Return the (mostly) unparsed content in the following delimited thingo, plus the delimiters.
-
-	}, {
-		key: "readDelimited",
-		value: function readDelimited() {
-			var buffer = "";
-			var left = this.reader.next();
-
-			// Go through characters, find nested delimited things and exit on un-nested \rightX
-			while (this.reader.hasNext()) {
-				if (this.accept("\\")) {
-					if (this.reader.peek().match(/[a-zA-Z]/)) {
-						var macro = this.readString(/[a-zA-Z]/);
-
-						if (macro === "left") {
-							var _readDelimited3 = this.readDelimited();
-
-							var _readDelimited4 = _slicedToArray(_readDelimited3, 3);
-
-							var content = _readDelimited4[0];
-							var nestedLeft = _readDelimited4[1];
-							var nestedRight = _readDelimited4[2];
-
-							buffer += "\\left" + nestedLeft + content + "\\right" + nestedRight;
-						} else if (macro === "right") {
-							var right = this.reader.next();
-							return [buffer, left, right];
-						} else {
-							buffer += "\\" + macro;
-						}
-					} else {
-						buffer += "\\";
-					}
-				} else {
-					buffer += this.reader.next();
-				}
+			} else {
+				throw new TeXSyntaxError("Unknown macro " + macro);
 			}
 
-			throw new TeXSyntaxError("Expecting \\right, got EOF");
+			return true;
 		}
 
 		// Return the (mostly) unparsed content in the following environment.
@@ -559,55 +375,23 @@ var TeXParser = function () {
 
 			throw new TeXSyntaxError("Expecting \\end{" + name + "}, got EOF");
 		}
-	}, {
-		key: "parseEnvironment",
-		value: function parseEnvironment(name) {
-			if (name === "align") {
-				var newContext = Object.create(this.context);
-				newContext.mathsMode = "display";
-				newContext.parseEntities = false; // We have already processed any entities.
-
-				var reader = new StringReader(this.readEnvironment(name)).mutate(newContext);
-
-				var parser = new TeXParser(reader, newContext);
-
-				this.buffer += '<div class="tex-align">';
-				this.buffer += '<div><span class="tex-align-lhs">'; // row, col
-
-				// Slightly modified parseMaths()
-				while (reader.hasNext()) {
-					parser.buffer = ""; // We add the parser's buffer to ours after every symbol, so reset here
-
-					if (parser.accept("&")) {
-						this.buffer += '</span>&nbsp;<span class="tex-align-rhs">'; // TODO: Better way of handling spaces
-					} else if (parser.accept("\\")) {
-							if (reader.peek().match(/[a-zA-Z]/)) {
-								// A macro
-								var macro = parser.readString(/[a-zA-Z]/);
-								parser.handleMacro(macro);
-								this.buffer += parser.buffer;
-							} else if (parser.accept("\\")) {
-								// A newline
-								this.buffer += '</span></div>'; // col, row
-								this.buffer += '<div><span class="tex-align-lhs">';
-							} else {
-								throw new TeXSyntaxError("Unexpected " + reader.next());
-							}
-						} else {
-							parser.parseMathsSymbol();
-							this.buffer += parser.buffer;
-						}
-				}
-
-				this.buffer += '</span></div></div>'; // col, row, tex-align
-			} else {
-					throw new TeXSyntaxError("Unknown environment " + name);
-				}
-		}
 
 		// Estimate the height of the given maths-mode code in em's
 
 	}], [{
+		key: "toRegex",
+		value: function toRegex(chars) {
+			var negate = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+			if (chars[0] === "^") {
+				chars = chars.replace("^", "") + "^"; // To include a literal ^, put it anywhere but first.
+			}
+			if (chars.includes("-")) {
+				chars = chars.replace("-", "") + "-"; // To include a literal -, put it last.
+			}
+			return RegExp("[" + (negate ? "^" : "") + chars + "]");
+		}
+	}, {
 		key: "estimateMathsHeight",
 		value: function estimateMathsHeight(code, context) {
 			var height = 0;
@@ -812,3 +596,378 @@ var HTMLAwareStringReader = function (_StringReader) {
 
 	return HTMLAwareStringReader;
 }(StringReader);
+"use strict";
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+//    aTeX - Lightweight TeX-style mathematics in JavaScript
+//    Copyright © 2015-2016  RunasSudo (Yingtong Li)
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Affero General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU Affero General Public License for more details.
+//
+//    You should have received a copy of the GNU Affero General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+var Plugin = function Plugin(parser) {
+	_classCallCheck(this, Plugin);
+
+	this.parser = parser;
+};
+
+var PluginBasic = function (_Plugin) {
+	_inherits(PluginBasic, _Plugin);
+
+	function PluginBasic() {
+		_classCallCheck(this, PluginBasic);
+
+		return _possibleConstructorReturn(this, Object.getPrototypeOf(PluginBasic).apply(this, arguments));
+	}
+
+	_createClass(PluginBasic, [{
+		key: "enable",
+		value: function enable() {
+			this.parser.context.arch.MATHS_UPRIGHTS += "0123456789%\\(\\)\\[\\]\\?∞↑→↓←";
+
+			this.parser.context.arch.MATHS_ACTIVES["+"] = PluginBasic.binaryMacro('+');
+			this.parser.context.arch.MATHS_ACTIVES["×"] = PluginBasic.binaryMacro('×');
+			this.parser.context.arch.MATHS_ACTIVES["÷"] = PluginBasic.binaryMacro('÷');
+			this.parser.context.arch.MATHS_ACTIVES["="] = PluginBasic.binaryMacro('=');
+			this.parser.context.arch.MATHS_ACTIVES["≈"] = PluginBasic.binaryMacro('≈');
+			this.parser.context.arch.MATHS_ACTIVES[">"] = PluginBasic.binaryMacro('>');
+			this.parser.context.arch.MATHS_ACTIVES["<"] = PluginBasic.binaryMacro('<');
+			this.parser.context.arch.MATHS_ACTIVES["≥"] = PluginBasic.binaryMacro('≥');
+			this.parser.context.arch.MATHS_ACTIVES["≤"] = PluginBasic.binaryMacro('≤');
+			this.parser.context.arch.MATHS_ACTIVES["*"] = PluginBasic.textMacro('∗');
+			this.parser.context.arch.MATHS_ACTIVES["'"] = PluginBasic.textMacro('′');
+			this.parser.context.arch.MATHS_MACROS["approx"] = PluginBasic.binaryMacro('≈');
+			this.parser.context.arch.MATHS_MACROS["cos"] = PluginBasic.textMacro('cos ');
+			this.parser.context.arch.MATHS_MACROS["uparrow"] = PluginBasic.textMacro(' ↑ ');
+			this.parser.context.arch.MATHS_MACROS["downarrow"] = PluginBasic.textMacro(' ↓ ');
+			this.parser.context.arch.MATHS_MACROS["leftarrow"] = PluginBasic.textMacro(' ← ');
+			this.parser.context.arch.MATHS_MACROS["rightarrow"] = PluginBasic.textMacro(' → ');
+			this.parser.context.arch.MATHS_MACROS["in"] = PluginBasic.textMacro('∈');
+			this.parser.context.arch.MATHS_MACROS["parallel"] = PluginBasic.textMacro('∥');
+			this.parser.context.arch.MATHS_MACROS["perp"] = PluginBasic.textMacro('⟂');
+			this.parser.context.arch.MATHS_MACROS["propto"] = PluginBasic.binaryMacro('∝');
+			this.parser.context.arch.MATHS_MACROS["sin"] = PluginBasic.textMacro('sin ');
+			this.parser.context.arch.MATHS_MACROS["sum"] = PluginBasic.textMacro('∑');
+			this.parser.context.arch.MATHS_MACROS["tan"] = PluginBasic.textMacro('tan ');
+			this.parser.context.arch.MATHS_MACROS["therefore"] = PluginBasic.textMacro('∴ ');
+			this.parser.context.arch.MATHS_MACROS["times"] = PluginBasic.binaryMacro('×');
+
+			this.parser.context.arch.MATHS_ACTIVES["-"] = function (parser, char) {
+				if (parser.buffer.endsWith(" ")) {
+					// Last input was probably an operator
+					parser.buffer += '−'; // Unary minus
+				} else {
+						parser.buffer += ' − '; // Binary minus
+					}
+			};
+
+			this.parser.context.arch.MATHS_ACTIVES["^"] = function (parser, char) {
+				var newContext = Object.create(parser.context);
+				if (parser.context.mathsMode === "ce") newContext.mathsMode = "compact";
+				var parser2 = new TeXParser(parser.reader, newContext);
+
+				parser.buffer += '<span class="tex-subsup">';
+				var out = void 0;
+				do {
+					parser.buffer += '<span class="' + (char === "_" ? 'sub' : 'sup') + '">';
+
+					parser2.buffer = "";
+					parser2.parseMathsSymbol(); // Read a single character or the next group/macro/etc.
+					parser.buffer += parser2.buffer;
+
+					parser.buffer += '</span>';
+				} while (out = parser.accept(/[_\^]/)); // Too much recursion. Time for loops!
+				parser.buffer += '</span>';
+			};
+			this.parser.context.arch.MATHS_ACTIVES["_"] = this.parser.context.arch.MATHS_ACTIVES["^"];
+
+			this.parser.context.arch.MATHS_MACROS["frac"] = function (parser, macro) {
+				var args = parser.readMacroArgs(2);
+
+				parser.buffer += '<span class="tex-frac"><span class="tex-frac-num">';
+				parser.buffer += TeXParser.parseString(args[0], parser.context);
+
+				var denHeight = TeXParser.estimateMathsHeight(args[1], parser.context);
+				parser.buffer += '</span><span class="tex-frac-bar"></span><span class="tex-frac-den" style="top: ' + (denHeight - 0.3) + 'em;">';
+
+				parser.buffer += TeXParser.parseString(args[1], parser.context);
+				parser.buffer += '</span></span>';
+			};
+
+			this.parser.context.arch.MATHS_MACROS["left"] = function (parser, macro) {
+				var _PluginBasic$readDeli = PluginBasic.readDelimited(parser);
+
+				var _PluginBasic$readDeli2 = _slicedToArray(_PluginBasic$readDeli, 3);
+
+				var content = _PluginBasic$readDeli2[0];
+				var left = _PluginBasic$readDeli2[1];
+				var right = _PluginBasic$readDeli2[2];
+
+				var contentHeight = TeXParser.estimateMathsHeight(content, parser.context);
+				var transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
+				parser.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
+				parser.buffer += TeXParser.parseString(content, parser.context);
+				parser.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
+				// Anki's QtWebView doesn't support unprefixed CSS transforms :(
+			};
+
+			this.parser.context.arch.MATHS_MACROS["right"] = function (parser, macro) {
+				throw new TeXSyntaxError("Unexpected \\right" + this.reader.next());
+			};
+
+			this.parser.context.arch.MATHS_MACROS["log"] = function (parser, macro) {
+				parser.buffer += "log";
+				if (parser.reader.peek() !== "_") {
+					parser.buffer += ' ';
+				}
+			};
+			this.parser.context.arch.MATHS_MACROS["ln"] = function (parser, macro) {
+				parser.buffer += macro;
+			};
+			this.parser.context.arch.MATHS_MACROS["lg"] = this.parser.context.arch.MATHS_MACROS["ln"];
+			this.parser.context.arch.MATHS_MACROS["lb"] = this.parser.context.arch.MATHS_MACROS["ln"];
+
+			this.parser.context.arch.MATHS_MACROS["mathcal"] = function (parser, macro) {
+				if (parser.readMacroArgs(1)[0] === "E") {
+					parser.buffer += 'ℰ';
+				}
+				// TODO: Better
+			};
+
+			this.parser.context.arch.MATHS_MACROS["overline"] = function (parser, macro) {
+				parser.buffer += '<span class="tex-overline">';
+				parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], parser.context);
+				parser.buffer += '</span>';
+			};
+			this.parser.context.arch.MATHS_MACROS["sqrt"] = function (parser, macro) {
+				parser.buffer += '<span class="tex-sqrt"><span>';
+				parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], parser.context);
+				parser.buffer += '</span></span>';
+			};
+			this.parser.context.arch.MATHS_MACROS["symbf"] = function (parser, macro) {
+				parser.buffer += '<b class="tex-bold">';
+				parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], parser.context);
+				parser.buffer += '</b>';
+			};
+			this.parser.context.arch.MATHS_MACROS["symup"] = function (parser, macro) {
+				parser.buffer += '<span class="tex-maths-upright">';
+				parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], parser.context);
+				parser.buffer += '</span>';
+			};
+
+			this.parser.context.arch.MATHS_MACROS["text"] = function (parser, macro) {
+				var newContext = Object.create(parser.context);
+				newContext.mathsMode = false;
+
+				parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], newContext);
+			};
+
+			this.parser.context.arch.MATHS_ENVIRONMENTS["align"] = function (parser, env) {
+				var newContext = Object.create(parser.context);
+				newContext.mathsMode = "display";
+				newContext.parseEntities = false; // We have already processed any entities.
+
+				var reader = new StringReader(parser.readEnvironment(env)).mutate(newContext);
+
+				var parser2 = new TeXParser(reader, newContext);
+
+				parser.buffer += '<div class="tex-align">';
+				parser.buffer += '<div><span class="tex-align-lhs">'; // row, col
+
+				// Slightly modified parseMaths()
+				while (reader.hasNext()) {
+					parser2.buffer = ''; // We add the parser's buffer to ours after every symbol, so reset here
+
+					if (parser2.accept("&")) {
+						parser.buffer += '</span>&nbsp;<span class="tex-align-rhs">'; // TODO: Better way of handling spaces
+					} else if (parser2.accept("\\")) {
+							if (reader.peek().match(/[a-zA-Z]/)) {
+								// A macro
+								var macro = parser2.readString(/[a-zA-Z]/);
+								parser2.handleMacro(macro);
+								parser.buffer += parser2.buffer;
+							} else if (parser2.accept("\\")) {
+								// A newline
+								parser.buffer += '</span></div>'; // col, row
+								parser.buffer += '<div><span class="tex-align-lhs">';
+							} else {
+								throw new TeXSyntaxError("Unexpected " + reader.next());
+							}
+						} else {
+							parser2.parseMathsSymbol();
+							parser.buffer += parser2.buffer;
+						}
+				}
+
+				parser.buffer += '</span></div></div>'; // col, row, tex-align
+			};
+		}
+
+		// Return the (mostly) unparsed content in the following delimited thingo, plus the delimiters.
+
+	}], [{
+		key: "readDelimited",
+		value: function readDelimited(parser) {
+			var buffer = "";
+			var left = parser.reader.next();
+
+			// Go through characters, find nested delimited things and exit on un-nested \rightX
+			while (parser.reader.hasNext()) {
+				if (parser.accept("\\")) {
+					if (parser.reader.peek().match(/[a-zA-Z]/)) {
+						var macro = parser.readString(/[a-zA-Z]/);
+
+						if (macro === "left") {
+							var _PluginBasic$readDeli3 = PluginBasic.readDelimited();
+
+							var _PluginBasic$readDeli4 = _slicedToArray(_PluginBasic$readDeli3, 3);
+
+							var content = _PluginBasic$readDeli4[0];
+							var nestedLeft = _PluginBasic$readDeli4[1];
+							var nestedRight = _PluginBasic$readDeli4[2];
+
+							buffer += "\\left" + nestedLeft + content + "\\right" + nestedRight;
+						} else if (macro === "right") {
+							var right = parser.reader.next();
+							return [buffer, left, right];
+						} else {
+							buffer += "\\" + macro;
+						}
+					} else {
+						buffer += "\\";
+					}
+				} else {
+					buffer += parser.reader.next();
+				}
+			}
+
+			throw new TeXSyntaxError("Expecting \\right, got EOF");
+		}
+
+		// Return a character/macro implementation that simply prints the given static output.
+
+	}, {
+		key: "textMacro",
+		value: function textMacro(text) {
+			return function (parser) {
+				var x = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+				parser.buffer += text;
+			};
+		}
+	}, {
+		key: "binaryMacro",
+		value: function binaryMacro(text) {
+			return function (parser) {
+				var x = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+				if (parser.context.mathsMode === "compact") {
+					parser.buffer += text;
+				} else {
+					parser.buffer += ' ' + text + ' ';
+				}
+			};
+		}
+	}]);
+
+	return PluginBasic;
+}(Plugin);
+
+var PluginChemistry = function (_Plugin2) {
+	_inherits(PluginChemistry, _Plugin2);
+
+	function PluginChemistry() {
+		_classCallCheck(this, PluginChemistry);
+
+		return _possibleConstructorReturn(this, Object.getPrototypeOf(PluginChemistry).apply(this, arguments));
+	}
+
+	_createClass(PluginChemistry, [{
+		key: "enable",
+		value: function enable() {
+			var _minus = this.parser.context.arch.MATHS_ACTIVES["-"] || function (nop) {};
+			this.parser.context.arch.MATHS_ACTIVES["-"] = function (parser, char) {
+				if (parser.context.mathsMode === "ce") {
+					if (parser.accept(">")) {
+						parser.buffer += ' ⟶ '; // It's actually an arrow in disguise
+					} else {
+							parser.buffer += '–'; // Single bond
+						}
+				} else {
+						_minus(parser, char);
+					}
+			};
+
+			var _equals = this.parser.context.arch.MATHS_ACTIVES["="] || function (nop) {};
+			this.parser.context.arch.MATHS_ACTIVES["="] = function (parser, char) {
+				if (parser.context.mathsMode === "ce") {
+					parser.buffer += '='; // Double bond
+				} else {
+						_equals(parser, char);
+					}
+			};
+
+			this.parser.context.arch.MATHS_ACTIVES["~"] = function (parser, char) {
+				if (parser.context.mathsMode === "ce") {
+					parser.buffer += '≡'; // Triple bond
+				} else {
+						parser.buffer += '~';
+					}
+			};
+
+			this.parser.context.arch.MATHS_MACROS["ce"] = function (parser) {
+				parser.buffer += '<span class="tex-maths-upright">';
+
+				var newContext = Object.create(parser.context);
+				newContext.mathsMode = "ce";
+
+				parser.buffer += TeXParser.parseString(parser.readMacroArgs(1)[0], newContext);
+				parser.buffer += '</span>';
+			};
+		}
+	}]);
+
+	return PluginChemistry;
+}(Plugin);
+
+// Hey look, you also get a copy of my personal set of LaTeX helper-macros! What a bargain!
+
+
+var PluginRunasSudo = function (_Plugin3) {
+	_inherits(PluginRunasSudo, _Plugin3);
+
+	function PluginRunasSudo() {
+		_classCallCheck(this, PluginRunasSudo);
+
+		return _possibleConstructorReturn(this, Object.getPrototypeOf(PluginRunasSudo).apply(this, arguments));
+	}
+
+	_createClass(PluginRunasSudo, [{
+		key: "enable",
+		value: function enable() {
+			this.parser.context.arch.MATHS_UPRIGHTS += "Δ";
+			this.parser.context.arch.MATHS_MACROS["uDelta"] = PluginBasic.textMacro('Δ');
+		}
+	}]);
+
+	return PluginRunasSudo;
+}(Plugin);
