@@ -98,12 +98,7 @@ class PluginBasic extends Plugin {
 		
 		this.parser.context.arch.MATHS_MACROS["left"] = function(parser, macro) {
 			let [content, left, right] = PluginBasic.readDelimited(parser);
-			let contentHeight = TeXParser.estimateMathsHeight(content, parser.context);
-			let transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
-			parser.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
-			parser.buffer += TeXParser.parseString(content, parser.context);
-			parser.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
-			// Anki's QtWebView doesn't support unprefixed CSS transforms :(
+			PluginBasic.printDelimited(parser, content, left, right);
 		}
 		
 		this.parser.context.arch.MATHS_MACROS["right"] = function(parser, macro) {
@@ -271,6 +266,14 @@ class PluginBasic extends Plugin {
 		}
 	}
 	
+	static printDelimited(parser, content, left, right) {
+		let contentHeight = TeXParser.estimateMathsHeight(content, parser.context);
+		let transform = '-webkit-transform: scale(1, ' + contentHeight + '); transform: scale(1, ' + contentHeight + ');';
+		parser.buffer += '<span class="tex-delim" style="' + transform + '">' + left + '</span>';
+		parser.buffer += TeXParser.parseString(content, parser.context);
+		parser.buffer += '<span class="tex-delim" style="' + transform + '">' + right + '</span>';
+		// Anki's QtWebView doesn't support unprefixed CSS transforms :(
+	}
 }
 
 class PluginChemistry extends Plugin {
@@ -322,5 +325,18 @@ class PluginRunasSudo extends Plugin {
 	enable() {
 		this.parser.context.arch.MATHS_UPRIGHTS += "Δ";
 		this.parser.context.arch.MATHS_MACROS["uDelta"] = PluginBasic.textMacro('Δ');
+		this.parser.context.arch.MATHS_MACROS["ue"] = PluginBasic.textMacro('e');
+		this.parser.context.arch.MATHS_MACROS["ui"] = PluginBasic.textMacro('i');
+		this.parser.context.arch.MATHS_MACROS["upi"] = PluginBasic.textMacro('π');
+		
+		this.parser.context.arch.MATHS_MACROS["br"] = function(parser, macro) {
+			PluginBasic.printDelimited(parser, parser.readMacroArgs(1)[0], '(', ')');
+		}
+		this.parser.context.arch.MATHS_MACROS["sbr"] = function(parser, macro) {
+			PluginBasic.printDelimited(parser, parser.readMacroArgs(1)[0], '[', ']');
+		}
+		this.parser.context.arch.MATHS_MACROS["cbr"] = function(parser, macro) {
+			PluginBasic.printDelimited(parser, parser.readMacroArgs(1)[0], '{', '}');
+		}
 	}
 }
