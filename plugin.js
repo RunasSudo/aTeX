@@ -278,7 +278,7 @@ class PluginBasic extends Plugin {
 
 class PluginChemistry extends Plugin {
 	enable() {
-		let _minus = this.parser.context.arch.MATHS_ACTIVES["-"] || function(nop){};
+		let _minus = this.parser.context.arch.MATHS_ACTIVES["-"] || function(parser,x){ this.parser.buffer += '-'; };
 		this.parser.context.arch.MATHS_ACTIVES["-"] = function(parser, char) {
 			if (parser.context.mathsMode === "ce") {
 				if (parser.accept(">")) {
@@ -291,7 +291,7 @@ class PluginChemistry extends Plugin {
 			}
 		}
 		
-		let _equals = this.parser.context.arch.MATHS_ACTIVES["="] || function(nop){};
+		let _equals = this.parser.context.arch.MATHS_ACTIVES["="] || function(parser,x){ this.parser.buffer += '='; };
 		this.parser.context.arch.MATHS_ACTIVES["="] = function(parser, char) {
 			if (parser.context.mathsMode === "ce") {
 				parser.buffer += '='; // Double bond
@@ -308,7 +308,7 @@ class PluginChemistry extends Plugin {
 			}
 		}
 		
-		this.parser.context.arch.MATHS_MACROS["ce"] = function(parser) {
+		this.parser.context.arch.MATHS_MACROS["ce"] = function(parser, macro) {
 			parser.buffer += '<span class="tex-maths-upright">';
 			
 			let newContext = Object.create(parser.context);
