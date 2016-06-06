@@ -69,7 +69,6 @@ class PluginBasic extends Plugin {
 			let parser2 = new TeXParser(parser.reader, newContext);
 			
 			parser.buffer += '<span class="tex-subsup">';
-			let out;
 			do {
 				parser.buffer += '<span class="' + (char === "_" ? 'sub' : 'sup') + '">';
 				
@@ -78,7 +77,7 @@ class PluginBasic extends Plugin {
 				parser.buffer += parser2.buffer;
 				
 				parser.buffer += '</span>';
-			} while (out = parser.accept(/[_\^]/)); // Too much recursion. Time for loops!
+			} while (char = parser.accept(/[_\^]/)); // Too much recursion. Time for loops!
 			parser.buffer += '</span>';
 		}
 		this.parser.context.arch.MATHS_ACTIVES["_"] = this.parser.context.arch.MATHS_ACTIVES["^"];
