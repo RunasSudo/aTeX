@@ -689,7 +689,6 @@ var PluginBasic = function (_Plugin) {
 				var parser2 = new TeXParser(parser.reader, newContext);
 
 				parser.buffer += '<span class="tex-subsup">';
-				var out = void 0;
 				do {
 					parser.buffer += '<span class="' + (char === "_" ? 'sub' : 'sup') + '">';
 
@@ -698,7 +697,7 @@ var PluginBasic = function (_Plugin) {
 					parser.buffer += parser2.buffer;
 
 					parser.buffer += '</span>';
-				} while (out = parser.accept(/[_\^]/)); // Too much recursion. Time for loops!
+				} while (char = parser.accept(/[_\^]/)); // Too much recursion. Time for loops!
 				parser.buffer += '</span>';
 			};
 			this.parser.context.arch.MATHS_ACTIVES["_"] = this.parser.context.arch.MATHS_ACTIVES["^"];
@@ -942,7 +941,9 @@ var PluginChemistry = function (_Plugin2) {
 	_createClass(PluginChemistry, [{
 		key: "enable",
 		value: function enable() {
-			var _minus = this.parser.context.arch.MATHS_ACTIVES["-"] || function (nop) {};
+			var _minus = this.parser.context.arch.MATHS_ACTIVES["-"] || function (parser, x) {
+				this.parser.buffer += '-';
+			};
 			this.parser.context.arch.MATHS_ACTIVES["-"] = function (parser, char) {
 				if (parser.context.mathsMode === "ce") {
 					if (parser.accept(">")) {
@@ -955,7 +956,9 @@ var PluginChemistry = function (_Plugin2) {
 					}
 			};
 
-			var _equals = this.parser.context.arch.MATHS_ACTIVES["="] || function (nop) {};
+			var _equals = this.parser.context.arch.MATHS_ACTIVES["="] || function (parser, x) {
+				this.parser.buffer += '=';
+			};
 			this.parser.context.arch.MATHS_ACTIVES["="] = function (parser, char) {
 				if (parser.context.mathsMode === "ce") {
 					parser.buffer += '='; // Double bond
@@ -972,7 +975,7 @@ var PluginChemistry = function (_Plugin2) {
 					}
 			};
 
-			this.parser.context.arch.MATHS_MACROS["ce"] = function (parser) {
+			this.parser.context.arch.MATHS_MACROS["ce"] = function (parser, macro) {
 				parser.buffer += '<span class="tex-maths-upright">';
 
 				var newContext = Object.create(parser.context);
