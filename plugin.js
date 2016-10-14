@@ -55,7 +55,11 @@ class PluginBasic extends Plugin {
 		this.parser.context.arch.MATHS_MACROS["to"] = PluginBasic.binaryMacro('→');
 		
 		this.parser.context.arch.MATHS_ACTIVES["-"] = function(parser, char) {
-			if (parser.buffer.endsWith(" ")) { // Last input was probably an operator
+			if (parser.context.mathsMode === "compact") {
+				parser.buffer += '−';
+			} else if (parser.buffer.endsWith(" ")) {
+				// Last input was probably an operator
+				// TODO: More robust detection
 				parser.buffer += '−'; // Unary minus
 			} else {
 				parser.buffer += ' − '; // Binary minus
