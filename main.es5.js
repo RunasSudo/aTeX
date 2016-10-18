@@ -412,6 +412,8 @@ var TeXParser = function () {
 							height = Math.max(height, 1.3);
 						} else if (macro === "overline") {
 							height = Math.max(height, 1.2);
+						} else {
+							height = Math.max(height, 1);
 						}
 					}
 				} else {
@@ -656,9 +658,11 @@ var PluginBasic = function (_Plugin) {
 			this.parser.context.arch.MATHS_ACTIVES["*"] = PluginBasic.textMacro('∗');
 			this.parser.context.arch.MATHS_ACTIVES["'"] = PluginBasic.textMacro('′');
 			this.parser.context.arch.MATHS_MACROS["approx"] = PluginBasic.binaryMacro('≈');
+			this.parser.context.arch.MATHS_MACROS["circ"] = PluginBasic.binaryMacro('∘');
 			this.parser.context.arch.MATHS_MACROS["cos"] = PluginBasic.opMacro('cos');
 			this.parser.context.arch.MATHS_MACROS["cot"] = PluginBasic.opMacro('cot');
 			this.parser.context.arch.MATHS_MACROS["csc"] = PluginBasic.opMacro('csc');
+			this.parser.context.arch.MATHS_MACROS["div"] = PluginBasic.binaryMacro('÷');
 			this.parser.context.arch.MATHS_MACROS["uparrow"] = PluginBasic.textMacro(' ↑ ');
 			this.parser.context.arch.MATHS_MACROS["downarrow"] = PluginBasic.textMacro(' ↓ ');
 			this.parser.context.arch.MATHS_MACROS["leftarrow"] = PluginBasic.textMacro(' ← ');
@@ -675,12 +679,15 @@ var PluginBasic = function (_Plugin) {
 			this.parser.context.arch.MATHS_MACROS["to"] = PluginBasic.binaryMacro('→');
 
 			this.parser.context.arch.MATHS_ACTIVES["-"] = function (parser, char) {
-				if (parser.buffer.endsWith(" ")) {
+				if (parser.context.mathsMode === "compact") {
+					parser.buffer += '−';
+				} else if (parser.buffer.endsWith(" ")) {
 					// Last input was probably an operator
+					// TODO: More robust detection
 					parser.buffer += '−'; // Unary minus
 				} else {
-						parser.buffer += ' − '; // Binary minus
-					}
+					parser.buffer += ' − '; // Binary minus
+				}
 			};
 
 			this.parser.context.arch.MATHS_ACTIVES["^"] = function (parser, char) {
@@ -815,22 +822,22 @@ var PluginBasic = function (_Plugin) {
 					if (parser2.accept("&")) {
 						parser.buffer += '</span>&nbsp;<span class="tex-align-rhs">'; // TODO: Better way of handling spaces
 					} else if (parser2.accept("\\")) {
-							if (reader.peek().match(/[a-zA-Z]/)) {
-								// A macro
-								var macro = parser2.readString(/[a-zA-Z]/);
-								parser2.handleMacro(macro);
-								parser.buffer += parser2.buffer;
-							} else if (parser2.accept("\\")) {
-								// A newline
-								parser.buffer += '</span></div>'; // col, row
-								parser.buffer += '<div><span class="tex-align-lhs">';
-							} else {
-								throw new TeXSyntaxError("Unexpected " + reader.next());
-							}
-						} else {
-							parser2.parseMathsSymbol();
+						if (reader.peek().match(/[a-zA-Z]/)) {
+							// A macro
+							var macro = parser2.readString(/[a-zA-Z]/);
+							parser2.handleMacro(macro);
 							parser.buffer += parser2.buffer;
+						} else if (parser2.accept("\\")) {
+							// A newline
+							parser.buffer += '</span></div>'; // col, row
+							parser.buffer += '<div><span class="tex-align-lhs">';
+						} else {
+							throw new TeXSyntaxError("Unexpected " + reader.next());
 						}
+					} else {
+						parser2.parseMathsSymbol();
+						parser.buffer += parser2.buffer;
+					}
 				}
 
 				parser.buffer += '</span></div></div>'; // col, row, tex-align
@@ -949,11 +956,11 @@ var PluginChemistry = function (_Plugin2) {
 					if (parser.accept(">")) {
 						parser.buffer += ' ⟶ '; // It's actually an arrow in disguise
 					} else {
-							parser.buffer += '–'; // Single bond
-						}
-				} else {
-						_minus(parser, char);
+						parser.buffer += '–'; // Single bond
 					}
+				} else {
+					_minus(parser, char);
+				}
 			};
 
 			var _equals = this.parser.context.arch.MATHS_ACTIVES["="] || function (parser, x) {
@@ -963,16 +970,16 @@ var PluginChemistry = function (_Plugin2) {
 				if (parser.context.mathsMode === "ce") {
 					parser.buffer += '='; // Double bond
 				} else {
-						_equals(parser, char);
-					}
+					_equals(parser, char);
+				}
 			};
 
 			this.parser.context.arch.MATHS_ACTIVES["~"] = function (parser, char) {
 				if (parser.context.mathsMode === "ce") {
 					parser.buffer += '≡'; // Triple bond
 				} else {
-						parser.buffer += '~';
-					}
+					parser.buffer += '~';
+				}
 			};
 
 			this.parser.context.arch.MATHS_MACROS["ce"] = function (parser, macro) {

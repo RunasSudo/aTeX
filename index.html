@@ -34,7 +34,11 @@ m &= M × n \\
 			var output = document.getElementById("output");
 			
 			function updateTeX() {
-				output.innerHTML = TeXParser.parseString(input.value);
+				var parser = new TeXParser(new StringReader(input.value));
+				new PluginBasic(parser).enable();
+				new PluginRunasSudo(parser).enable();
+				
+				output.innerHTML = parser.parseTeX();
 			}
 			
 			input.oninput = updateTeX;
