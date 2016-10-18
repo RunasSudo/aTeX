@@ -328,6 +328,8 @@ class TeXParser {
 						height = Math.max(height, 1.3);
 					} else if (macro === "overline") {
 						height = Math.max(height, 1.2);
+					} else {
+						height = Math.max(height, 1);
 					}
 				}
 			} else {
